@@ -4,7 +4,6 @@ import com.singularity_universe.axon.Axon
 import com.singularity_universe.axon.Intent
 import com.singularity_universe.axon.exception.NoHandlerException
 import com.singularity_universe.axon.Resolver
-import com.singularity_universe.axon.ext.registerResolver
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.runBlocking
 
@@ -37,7 +36,7 @@ data class LogoutIntent(
 
 fun main() = runBlocking {
     val axon = Axon()
-    axon.registerResolver<LoginIntent, LoginResult>(LoginResolver())
+    axon.registerResolver(LoginIntent::class, LoginResolver())
 
     println("=== proceed: LoginIntent ===")
     axon.proceed(LoginIntent(username = "steve", password = "secret"))
