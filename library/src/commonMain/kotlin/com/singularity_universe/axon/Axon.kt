@@ -17,11 +17,11 @@ import kotlin.reflect.KClass
  * axon.registerResolver(LoginIntent::class, LoginResolver())
  * ```
  *
- * Intents are dispatched via [proceed]:
+ * Intents are dispatched via [dispatch]:
  * ```
  * axon.proceed(LoginIntent(username, password))
  *     .catch { e -> if (e is NoHandlerException) { ... } }
- *     .collect { intent -> ... }
+ *     .collect { intent -> ... }  // optional — fire-and-forget intents may not need a collector
  * ```
  */
 class Axon {
@@ -52,7 +52,7 @@ class Axon {
      * @param intent the intent to dispatch.
      * @throws com.singularity_universe.axon.exception.NoHandlerException if no resolver is registered for this intent type.
      */
-    fun <R> proceed(intent: Intent<R>): Flow<Intent<R>> = flow {
+    fun <R> dispatch(intent: Intent<R>): Flow<Intent<R>> = flow {
         @Suppress("UNCHECKED_CAST")
         val resolver = resolvers[intent::class] as? Resolver<Intent<R>, R>
             ?: throw NoHandlerException(intent)

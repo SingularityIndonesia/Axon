@@ -39,7 +39,7 @@ fun main() = runBlocking {
     axon.registerResolver(LoginIntent::class, LoginResolver())
 
     println("=== proceed: LoginIntent ===")
-    axon.proceed(LoginIntent(username = "steve", password = "secret"))
+    axon.dispatch(LoginIntent(username = "steve", password = "secret"))
         .catch { e ->
             if (e is NoHandlerException) println("No handler: ${e.message}")
             else throw e
@@ -50,7 +50,7 @@ fun main() = runBlocking {
 
     println()
     println("=== proceed: LogoutIntent (no resolver) ===")
-    axon.proceed(LogoutIntent())
+    axon.dispatch(LogoutIntent())
         .catch { e ->
             if (e is NoHandlerException) println("No handler: ${e.message}")
             else throw e
