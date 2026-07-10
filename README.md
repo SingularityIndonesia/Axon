@@ -13,12 +13,25 @@ It places business processes at the center of the application, treating UI, data
 ### Intent
 An `Intent` is a declarative object that carries a user's intention. It knows its result (once processed) and its parent intent (if spawned by another intent), but nothing about how it will be handled.
 
+Intents are best organized as a sealed class hierarchy per domain:
+
 ```kotlin
-data class LoginIntent(
-    val username: String,
-    val password: String,
-    override val result: LoginResult? = null
-) : Intent<LoginResult>()
+sealed class MyAppIntent<out R> : Intent<R>() {
+
+    data class LoginIntent(
+        val username: String,
+        val password: String,
+        override val result: LoginResult? = null
+    ) : MyAppIntent<LoginIntent.LoginResult>() {
+        data class LoginResult(val token: String)
+    }
+
+    data class LogoutIntent(
+        override val result: LogoutResult? = null
+    ) : MyAppIntent<LogoutIntent.LogoutResult>() {
+        data class LogoutResult(val success: Boolean)
+    }
+}
 ```
 
 ### Resolver
