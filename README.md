@@ -61,8 +61,10 @@ Without KSP, resolvers can be registered manually:
 
 ```kotlin
 val axon = Axon()
-axon.registerResolver(LoginIntent::class, LoginResolver())
+axon.registerResolver(LoginIntent::class, lazy { LoginResolver() })
 ```
+
+Resolver instances are created **lazily** — only on the first `dispatch` call for that intent type, not at registration time. This keeps startup cost low and allows resolvers to declare heavy dependencies without paying for them until they are actually needed.
 
 A custom `AxonLogger` can be injected to forward fatal resolver errors to your platform's logging infrastructure (e.g. Crashlytics, Timber, Sentry):
 
