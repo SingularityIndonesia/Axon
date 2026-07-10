@@ -2,6 +2,7 @@ package com.singularity_universe.axon
 
 import com.singularity_universe.axon.exception.DuplicateResolverException
 import com.singularity_universe.axon.exception.NoHandlerException
+import com.singularity_universe.axon.exception.ResolverException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlin.reflect.KClass
@@ -20,12 +21,14 @@ import kotlin.reflect.KClass
  *
  * Intents are dispatched via [dispatch]:
  * ```
- * axon.proceed(LoginIntent(username, password))
+ * axon.dispatch(LoginIntent(username, password))
  *     .catch { e -> if (e is NoHandlerException) { ... } }
  *     .collect { intent -> ... }  // optional — fire-and-forget intents may not need a collector
  * ```
+ *
+ * @param logger the [AxonLogger] used to report fatal resolver errors. Defaults to [AxonLogger.Default].
  */
-class Axon {
+class Axon(private val logger: AxonLogger = AxonLogger.Default) {
 
     private val resolvers = mutableMapOf<KClass<*>, Resolver<*, *>>()
 
@@ -49,21 +52,36 @@ class Axon {
      * of resolved [Intent] states.
      *
      * The [Flow] emits each time the [Resolver] calls [emit][Resolver.resolve], allowing
-     * intermediate feedback before the final result. If no resolver is registered for the
-     * intent type, the [Flow] terminates with a [com.singularity_universe.axon.exception.NoHandlerException].
+     * intermediate feedback before the final result.
      *
      * Cancellation is handled organically — cancelling the collector's scope will cancel
      * the resolver's coroutine.
      *
+     * **Callers must always attach a `.catch {}` to handle the following exceptions:**
+     *
      * @param intent the intent to dispatch.
-     * @throws com.singularity_universe.axon.exception.NoHandlerException if no resolver is registered for this intent type.
+     * @throws NoHandlerException if no resolver is registered for this intent type.
+     * @throws ResolverException if the resolver violates its contract by throwing an exception.
+     * This indicates a bug in the resolver — resolvers must never throw. A hardcoded fatal log
+     * is always emitted before this exception reaches the caller.
      */
     fun <R> dispatch(intent: Intent<R>): Flow<Intent<R>> = flow {
         @Suppress("UNCHECKED_CAST")
         val resolver = resolvers[intent::class] as? Resolver<Intent<R>, R>
             ?: throw NoHandlerException(intent)
 
-        resolver.resolve(intent) { emit(it) }
+        runCatching {
+            resolver.resolve(intent) { emit(it) }
+        }.onFailure { exception ->
+            // Always re-throw CancellationException — it must never be intercepted.
+            // Swallowing it would silently break coroutine cancellation.
+            if (exception is kotlinx.coroutines.CancellationException) throw exception
+
+            // This log is hardcoded and cannot be excluded or filtered.
+            // A resolver that throws is always a fatal contract violation.
+            println("\u001B[31m[Axon] *** FATAL *** ${intent::class.simpleName} resolver threw an exception. This must never happen. Cause: ${exception.message}\u001B[0m")
+            logger.onResolverException(intent, exception)
+            throw ResolverException(intent, exception)
+        }
     }
 }
-
