@@ -45,7 +45,7 @@ class AxonSymbolProcessor(
                 val intentType = clazz.resolveIntentType()
                 val intentName = intentType.declaration.simpleName.asString()
                 val resolverName = clazz.simpleName.asString()
-                out.write("    registerResolver($intentName::class, $resolverName())\n")
+                out.write("    registerResolver($intentName::class, lazy { $resolverName() })\n")
             }
             out.write("}\n")
         }

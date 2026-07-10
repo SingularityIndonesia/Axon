@@ -28,25 +28,29 @@ import kotlin.reflect.KClass
  */
 class Axon(private val logger: AxonLogger = AxonLogger.Default) {
 
-    private val handlers = mutableMapOf<KClass<*>, Resolver<*, *>>()
+    private val handlers = mutableMapOf<KClass<*>, Lazy<Resolver<*, *>>>()
 
     /**
-     * Registers a [Handler] for the given [intentClass].
+     * Registers a lazy [Resolver] for the given [intentClass].
      *
-     * Each [Intent] type may only have one handler. Registering a second handler
+     * The resolver instance is created only on the first [dispatch] call for this intent type,
+     * not at registration time. This keeps startup cost low and allows resolvers to declare
+     * heavy dependencies without paying for them until they are actually needed.
+     *
+     * Each [Intent] type may only have one resolver. Registering a second resolver
      * for the same type throws [DuplicateResolverException] to prevent silent overwrites.
      *
      * ```
-     * axon.registerResolver(LoginIntent::class, LoginResolver())
+     * axon.registerResolver(LoginIntent::class, lazy { LoginResolver() })
      * ```
      *
-     * @param intentClass the [KClass] of the [Intent] this handler processes.
-     * @param handler the [Resolver] instance that processes the intent.
-     * @throws DuplicateResolverException if a handler for [intentClass] is already registered.
+     * @param intentClass the [KClass] of the [Intent] this resolver handles.
+     * @param resolver lazy instance of the [Resolver] that processes the intent.
+     * @throws DuplicateResolverException if a resolver for [intentClass] is already registered.
      */
-    fun <I : Intent<R>, R> registerResolver(intentClass: KClass<I>, handler: Resolver<I, R>) {
+    fun <I : Intent<R>, R> registerResolver(intentClass: KClass<I>, resolver: Lazy<Resolver<I, R>>) {
         if (handlers.containsKey(intentClass)) throw DuplicateResolverException(intentClass)
-        handlers[intentClass] = handler
+        handlers[intentClass] = resolver
     }
 
     /**
@@ -63,7 +67,7 @@ class Axon(private val logger: AxonLogger = AxonLogger.Default) {
      */
     suspend fun <R> dispatch(intent: Intent<R>): R {
         @Suppress("UNCHECKED_CAST")
-        val handler = handlers[intent::class] as? Resolver<Intent<R>, R>
+        val handler = handlers[intent::class]?.value as? Resolver<Intent<R>, R>
             ?: throw NoHandlerException(intent)
 
         return runCatching {
