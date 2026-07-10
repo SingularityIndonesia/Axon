@@ -1,5 +1,7 @@
 package com.singularity_universe.axon
 
+import com.singularity_universe.axon.untils.Log
+
 /**
  * Logger interface for [Axon] internal events.
  *
@@ -49,7 +51,10 @@ interface AxonLogger {
          */
         val Default: AxonLogger = object : AxonLogger {
             override fun onResolverException(intent: Intent<*>, exception: Throwable) {
-                println("[Axon] FATAL — ${intent::class.simpleName} resolver threw an exception: ${exception.message}")
+                Log.fatalError(
+                    "[Axon]",
+                    "${intent::class.simpleName} resolver threw an exception: ${exception.message}"
+                )
             }
         }
     }

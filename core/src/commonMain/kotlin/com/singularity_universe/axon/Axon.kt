@@ -3,6 +3,7 @@ package com.singularity_universe.axon
 import com.singularity_universe.axon.exception.DuplicateResolverException
 import com.singularity_universe.axon.exception.NoHandlerException
 import com.singularity_universe.axon.exception.ResolverException
+import com.singularity_universe.axon.untils.Log
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlin.reflect.KClass
@@ -79,7 +80,10 @@ class Axon(private val logger: AxonLogger = AxonLogger.Default) {
 
             // This log is hardcoded and cannot be excluded or filtered.
             // A resolver that throws is always a fatal contract violation.
-            println("\u001B[31m[Axon] *** FATAL *** ${intent::class.simpleName} resolver threw an exception. This must never happen. Cause: ${exception.message}\u001B[0m")
+            Log.fatalError(
+                "[Axon]",
+                "${intent::class.simpleName} resolver threw an exception. This must never happen. Cause: ${exception.message}"
+            )
             logger.onResolverException(intent, exception)
             throw ResolverException(intent, exception)
         }

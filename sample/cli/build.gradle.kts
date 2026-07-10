@@ -4,7 +4,13 @@ plugins {
 }
 
 application {
-    mainClass = "com.singularity_universe.axon.sample.MainKt"
+    mainClass = "MainKt"
+}
+
+sourceSets {
+    main {
+        kotlin.srcDir("main")
+    }
 }
 
 dependencies {
