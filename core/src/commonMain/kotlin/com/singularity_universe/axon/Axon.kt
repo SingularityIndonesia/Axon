@@ -28,7 +28,7 @@ import kotlin.reflect.KClass
  */
 class Axon(private val logger: AxonLogger = AxonLogger.Default) {
 
-    private val handlers = mutableMapOf<KClass<*>, Handler<*, *>>()
+    private val handlers = mutableMapOf<KClass<*>, Resolver<*, *>>()
 
     /**
      * Registers a [Handler] for the given [intentClass].
@@ -41,10 +41,10 @@ class Axon(private val logger: AxonLogger = AxonLogger.Default) {
      * ```
      *
      * @param intentClass the [KClass] of the [Intent] this handler processes.
-     * @param handler the [Handler] instance that processes the intent.
+     * @param handler the [Resolver] instance that processes the intent.
      * @throws DuplicateResolverException if a handler for [intentClass] is already registered.
      */
-    fun <I : Intent<R>, R> registerResolver(intentClass: KClass<I>, handler: Handler<I, R>) {
+    fun <I : Intent<R>, R> registerResolver(intentClass: KClass<I>, handler: Resolver<I, R>) {
         if (handlers.containsKey(intentClass)) throw DuplicateResolverException(intentClass)
         handlers[intentClass] = handler
     }
@@ -63,7 +63,7 @@ class Axon(private val logger: AxonLogger = AxonLogger.Default) {
      */
     suspend fun <R> dispatch(intent: Intent<R>): R {
         @Suppress("UNCHECKED_CAST")
-        val handler = handlers[intent::class] as? Handler<Intent<R>, R>
+        val handler = handlers[intent::class] as? Resolver<Intent<R>, R>
             ?: throw NoHandlerException(intent)
 
         return runCatching {

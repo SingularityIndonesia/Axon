@@ -1,31 +1,37 @@
 package com.singularity_universe.axon
 
-import kotlin.reflect.KClass
-
 /**
- * Marks a class as the resolver for a specific [Intent] type.
+ * The processing contract for a specific [Intent] type.
  *
- * A class annotated with [Resolver] must declare a suspending function with the signature:
- * ```
- * suspend fun resolve(intent: I): R
- * ```
- * where `I` is the intent class specified in [intentClass], and `R` is the corresponding result type.
+ * Always used together with the [@Resolve][Resolve] annotation, which binds this resolver
+ * to its target intent class and enables auto-registration via the KSP annotation processor.
  *
- * This annotation is used by the KSP annotation processor to auto-generate resolver registration
- * with [Axon]. Without KSP, resolvers must be registered manually via [Axon.registerResolver].
- *
- * Example:
  * ```
- * @Resolver(LoginIntent::class)
- * class LoginResolver {
- *     suspend fun resolve(intent: LoginIntent): LoginIntent.LoginResult {
- *         return LoginIntent.LoginResult(token = "jwt.token.abc123")
+ * @Resolve(LoginIntent::class)
+ * class LoginResolver : Resolver<LoginIntent, LoginResult> {
+ *     override suspend fun resolve(intent: LoginIntent): LoginResult {
+ *         return LoginResult(token = "jwt.token.abc123")
  *     }
  * }
  * ```
  *
- * @param intentClass the [Intent] subclass this resolver handles.
+ * @param I the specific [Intent] type this resolver handles.
+ * @param R the result type returned after processing.
  */
-@Target(AnnotationTarget.CLASS)
-@Retention(AnnotationRetention.RUNTIME)
-annotation class Resolver(val intentClass: KClass<out Intent<*>>)
+interface Resolver<I : Intent<R>, R> {
+
+    /**
+     * Processes the given [intent] and returns the result.
+     *
+     * Must not throw — express all error states through [R] instead.
+     * Throwing is a fatal contract violation; [Axon] will catch it,
+     * emit a fatal log, and re-throw it as a [com.singularity_universe.axon.exception.ResolverException].
+     *
+     * Cancellation is handled automatically — if the caller's scope is cancelled,
+     * this coroutine is cancelled as well.
+     *
+     * @param intent the intent to process.
+     * @return the result of processing the intent.
+     */
+    suspend fun resolve(intent: I): R
+}
