@@ -6,7 +6,7 @@ plugins {
     alias(libs.plugins.vanniktech.mavenPublish)
 }
 
-group = "com.singularity_universe"
+group = "com.singularity_universe.axon"
 version = "1.0.0"
 
 kotlin {
@@ -47,7 +47,7 @@ mavenPublishing {
 
     signAllPublications()
 
-    coordinates(group.toString(), "library", version.toString())
+    coordinates(group.toString(), "core", version.toString())
 
     pom {
         name = "Axon"

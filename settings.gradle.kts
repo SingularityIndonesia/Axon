@@ -14,5 +14,5 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "Axon"
-include(":library")
+include(":core")
 include(":sample")

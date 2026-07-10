@@ -8,6 +8,6 @@ application {
 }
 
 dependencies {
-    implementation(project(":library"))
+    implementation(project(":core"))
     implementation(libs.kotlinx.coroutines.core)
 }
