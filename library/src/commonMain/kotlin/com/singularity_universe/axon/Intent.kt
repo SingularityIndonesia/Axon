@@ -9,14 +9,6 @@ import kotlinx.datetime.Clock
  * what the user wants to accomplish. Intents are processed by a Process, which
  * produces a [result] and returns it back through the intent.
  *
- * Subclass this to define domain-specific intents:
- * ```
- * data class LoginIntent(
- *     val username: String,
- *     val password: String
- * ) : Intent<LoginResult>()
- * ```
- *
  * @param R covariant type of the result produced after this intent is processed.
  */
 abstract class Intent<out R> {
@@ -38,4 +30,5 @@ abstract class Intent<out R> {
      * A child intent is aware that a parent exists but does not know its specific type.
      */
     open val parent: Intent<*>? = null
+
 }
