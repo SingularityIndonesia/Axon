@@ -15,4 +15,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "Axon"
 include(":core")
-include(":sample")
+include(":sample:cli")
