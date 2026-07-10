@@ -4,76 +4,71 @@ import com.singularity_universe.axon.exception.DuplicateResolverException
 import com.singularity_universe.axon.exception.NoHandlerException
 import com.singularity_universe.axon.exception.ResolverException
 import com.singularity_universe.axon.untils.Log
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flow
 import kotlin.reflect.KClass
 
 /**
  * The central flow controller of the Axon framework.
  *
- * [Axon] routes incoming [Intent]s to their registered [Resolver]s and streams
- * resolved states back to the caller as a [Flow].
+ * [Axon] routes incoming [Intent]s to their registered [Handler]s and returns the result.
  *
- * Resolvers are registered via [registerResolver]:
+ * Handlers are registered via [registerResolver]:
  * ```
  * val axon = Axon()
  * axon.registerResolver(LoginIntent::class, LoginResolver())
  * ```
  *
+ * With the KSP annotation processor, registration is generated automatically from [@Resolver][Resolver].
+ *
  * Intents are dispatched via [dispatch]:
  * ```
- * axon.dispatch(LoginIntent(username, password))
- *     .catch { e -> if (e is NoHandlerException) { ... } }
- *     .collect { intent -> ... }  // optional — fire-and-forget intents may not need a collector
+ * val result = axon.dispatch(LoginIntent(username, password))
  * ```
  *
  * @param logger the [AxonLogger] used to report fatal resolver errors. Defaults to [AxonLogger.Default].
  */
 class Axon(private val logger: AxonLogger = AxonLogger.Default) {
 
-    private val resolvers = mutableMapOf<KClass<*>, Resolver<*, *>>()
+    private val handlers = mutableMapOf<KClass<*>, Handler<*, *>>()
 
     /**
-     * Registers a [Resolver] for the given [intentClass].
+     * Registers a [Handler] for the given [intentClass].
      *
-     * Each [Intent] type may only have one resolver. Registering a second resolver
+     * Each [Intent] type may only have one handler. Registering a second handler
      * for the same type throws [DuplicateResolverException] to prevent silent overwrites.
      *
-     * @param intentClass the [KClass] of the [Intent] this resolver handles.
-     * @param resolver the resolver to register.
-     * @throws DuplicateResolverException if a resolver for [intentClass] is already registered.
+     * ```
+     * axon.registerResolver(LoginIntent::class, LoginResolver())
+     * ```
+     *
+     * @param intentClass the [KClass] of the [Intent] this handler processes.
+     * @param handler the [Handler] instance that processes the intent.
+     * @throws DuplicateResolverException if a handler for [intentClass] is already registered.
      */
-    fun <I : Intent<R>, R> registerResolver(intentClass: KClass<I>, resolver: Resolver<I, R>) {
-        if (resolvers.containsKey(intentClass)) throw DuplicateResolverException(intentClass)
-        resolvers[intentClass] = resolver
+    fun <I : Intent<R>, R> registerResolver(intentClass: KClass<I>, handler: Handler<I, R>) {
+        if (handlers.containsKey(intentClass)) throw DuplicateResolverException(intentClass)
+        handlers[intentClass] = handler
     }
 
     /**
-     * Dispatches the given [intent] to its registered [Resolver] and returns a [Flow]
-     * of resolved [Intent] states.
+     * Dispatches the given [intent] to its registered [Handler] and returns the result.
      *
-     * The [Flow] emits each time the [Resolver] calls [emit][Resolver.resolve], allowing
-     * intermediate feedback before the final result.
-     *
-     * Cancellation is handled organically — cancelling the collector's scope will cancel
-     * the resolver's coroutine.
-     *
-     * **Callers must always attach a `.catch {}` to handle the following exceptions:**
+     * **Callers must handle the following exceptions:**
      *
      * @param intent the intent to dispatch.
-     * @throws NoHandlerException if no resolver is registered for this intent type.
-     * @throws ResolverException if the resolver violates its contract by throwing an exception.
+     * @return the result produced by the handler.
+     * @throws NoHandlerException if no handler is registered for this intent type.
+     * @throws ResolverException if the handler violates its contract by throwing an exception.
      * This indicates a bug in the resolver — resolvers must never throw. A hardcoded fatal log
      * is always emitted before this exception reaches the caller.
      */
-    fun <R> dispatch(intent: Intent<R>): Flow<Intent<R>> = flow {
+    suspend fun <R> dispatch(intent: Intent<R>): R {
         @Suppress("UNCHECKED_CAST")
-        val resolver = resolvers[intent::class] as? Resolver<Intent<R>, R>
+        val handler = handlers[intent::class] as? Handler<Intent<R>, R>
             ?: throw NoHandlerException(intent)
 
-        runCatching {
-            resolver.resolve(intent) { emit(it) }
-        }.onFailure { exception ->
+        return runCatching {
+            handler.resolve(intent)
+        }.getOrElse { exception ->
             // Always re-throw CancellationException — it must never be intercepted.
             // Swallowing it would silently break coroutine cancellation.
             if (exception is kotlinx.coroutines.CancellationException) throw exception

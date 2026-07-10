@@ -6,20 +6,19 @@ sealed class MyAppIntent<out R> : Intent<R>() {
 
     data class LoginIntent(
         val username: String,
-        val password: String,
-        override val result: LoginResult? = null
+        val password: String
     ) : MyAppIntent<LoginIntent.LoginResult>() {
         data class LoginResult(val token: String)
     }
 
     data class LogoutIntent(
-        override val result: LogoutResult? = null
+        val userId: String
     ) : MyAppIntent<LogoutIntent.LogoutResult>() {
         data class LogoutResult(val success: Boolean)
     }
 
     data class DeleteAccountIntent(
-        override val result: DeleteAccountResult? = null
+        val userId: String
     ) : MyAppIntent<DeleteAccountIntent.DeleteAccountResult>() {
         data class DeleteAccountResult(val success: Boolean)
     }
