@@ -1,5 +1,6 @@
 plugins {
     alias(libs.plugins.kotlinJvm)
+    alias(libs.plugins.ksp)
     application
 }
 
@@ -16,4 +17,5 @@ sourceSets {
 dependencies {
     implementation(project(":core"))
     implementation(libs.kotlinx.coroutines.core)
+    ksp(project(":ksp"))
 }
