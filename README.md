@@ -11,7 +11,7 @@ It places business processes at the center of the application, treating UI, data
 ## Core Concepts
 
 ### Intent
-An `Intent` is a declarative object that carries a user's intention. It knows its result (once processed) and its parent intent (if spawned by another intent), but nothing about how it will be handled.
+An `Intent` is a pure, immutable declarative object that describes what the user wants to accomplish. It carries only its input data, a `createdAt` timestamp, and an optional `parent` intent — never the result.
 
 Intents are best organized as a sealed class hierarchy per domain:
 
@@ -20,14 +20,13 @@ sealed class MyAppIntent<out R> : Intent<R>() {
 
     data class LoginIntent(
         val username: String,
-        val password: String,
-        override val result: LoginResult? = null
+        val password: String
     ) : MyAppIntent<LoginIntent.LoginResult>() {
         data class LoginResult(val token: String)
     }
 
     data class LogoutIntent(
-        override val result: LogoutResult? = null
+        val userId: String
     ) : MyAppIntent<LogoutIntent.LogoutResult>() {
         data class LogoutResult(val success: Boolean)
     }
@@ -35,15 +34,15 @@ sealed class MyAppIntent<out R> : Intent<R>() {
 ```
 
 ### Resolver
-A `Resolver` handles a specific `Intent` type. It receives the intent and emits one or more resolved states back to the caller — enabling intermediate feedback before the final result.
+A `Resolver` handles a specific `Intent` type and returns a result directly. It is always paired with the `@Resolve` annotation, which declares which intent it handles and enables auto-registration via the KSP annotation processor.
 
-Resolvers **must never throw exceptions**. All outcomes — including errors — must be expressed through the intent's result type.
+Resolvers **must never throw exceptions**. All outcomes — including errors — must be expressed through the result type.
 
 ```kotlin
+@Resolve(LoginIntent::class)
 class LoginResolver : Resolver<LoginIntent, LoginResult> {
-    override suspend fun resolve(intent: LoginIntent, emit: suspend (Intent<LoginResult>) -> Unit) {
-        emit(intent.copy(result = LoginResult(token = "authenticating...")))
-        emit(intent.copy(result = LoginResult(token = "jwt.token.abc123")))
+    override suspend fun resolve(intent: LoginIntent): LoginResult {
+        return LoginResult(token = "jwt.token.abc123")
     }
 }
 ```
@@ -56,7 +55,7 @@ val axon = Axon()
 axon.registerResolver(LoginIntent::class, LoginResolver())
 ```
 
-A custom `AxonLogger` can be injected to forward internal events to your platform's logging infrastructure (e.g. Crashlytics, Timber, Sentry):
+A custom `AxonLogger` can be injected to forward fatal resolver errors to your platform's logging infrastructure (e.g. Crashlytics, Timber, Sentry):
 
 ```kotlin
 val axon = Axon(logger = MyLogger())
@@ -66,27 +65,23 @@ val axon = Axon(logger = MyLogger())
 
 ## Dispatching Intents
 
-`dispatch` returns a `Flow<Intent<R>>`. The flow emits each time the resolver calls `emit`, and is automatically cancelled when the collector's scope is cancelled.
+`dispatch` is a suspending function that returns the result directly. Cancellation is handled organically — cancelling the caller's scope cancels the resolver's coroutine.
 
-Callers **must always attach `.catch {}`** to handle the following exceptions:
+Callers must handle the following exceptions:
 
 - `NoHandlerException` — no resolver is registered for this intent type
 - `ResolverException` — the resolver violated its contract by throwing an exception (this is a bug and should never happen)
 
 ```kotlin
-axon.dispatch(LoginIntent(username = "steve", password = "secret"))
-    .catch { e ->
-        when (e) {
-            is NoHandlerException -> { /* no resolver registered */ }
-            is ResolverException  -> { /* resolver bug — hide loading, report */ }
-        }
-    }
-    .collect { intent ->
-        println(intent.result)
-    }
+try {
+    val result = axon.dispatch(LoginIntent(username = "steve", password = "secret"))
+    println(result.token)
+} catch (e: NoHandlerException) {
+    // no resolver registered
+} catch (e: ResolverException) {
+    // resolver bug — hide loading, report to logger
+}
 ```
-
-Not all intents need a collector — fire-and-forget intents can be dispatched without `collect`.
 
 ---
 
