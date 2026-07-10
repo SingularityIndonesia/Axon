@@ -81,7 +81,7 @@ class Axon(private val logger: AxonLogger = AxonLogger.Default) {
             // This log is hardcoded and cannot be excluded or filtered.
             // A resolver that throws is always a fatal contract violation.
             Log.fatalError(
-                "[Axon]",
+                "Axon",
                 "${intent::class.simpleName} resolver threw an exception. This must never happen. Cause: ${exception.message}"
             )
             logger.onResolverException(intent, exception)

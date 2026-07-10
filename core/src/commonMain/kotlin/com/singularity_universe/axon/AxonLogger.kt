@@ -52,7 +52,7 @@ interface AxonLogger {
         val Default: AxonLogger = object : AxonLogger {
             override fun onResolverException(intent: Intent<*>, exception: Throwable) {
                 Log.fatalError(
-                    "[Axon]",
+                    "Axon",
                     "${intent::class.simpleName} resolver threw an exception: ${exception.message}"
                 )
             }
