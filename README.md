@@ -24,6 +24,8 @@ data class LoginIntent(
 ### Resolver
 A `Resolver` handles a specific `Intent` type. It receives the intent and emits one or more resolved states back to the caller — enabling intermediate feedback before the final result.
 
+Resolvers **must never throw exceptions**. All outcomes — including errors — must be expressed through the intent's result type.
+
 ```kotlin
 class LoginResolver : Resolver<LoginIntent, LoginResult> {
     override suspend fun resolve(intent: LoginIntent, emit: suspend (Intent<LoginResult>) -> Unit) {
@@ -41,16 +43,30 @@ val axon = Axon()
 axon.registerResolver(LoginIntent::class, LoginResolver())
 ```
 
+A custom `AxonLogger` can be injected to forward internal events to your platform's logging infrastructure (e.g. Crashlytics, Timber, Sentry):
+
+```kotlin
+val axon = Axon(logger = MyLogger())
+```
+
 ---
 
 ## Dispatching Intents
 
 `dispatch` returns a `Flow<Intent<R>>`. The flow emits each time the resolver calls `emit`, and is automatically cancelled when the collector's scope is cancelled.
 
+Callers **must always attach `.catch {}`** to handle the following exceptions:
+
+- `NoHandlerException` — no resolver is registered for this intent type
+- `ResolverException` — the resolver violated its contract by throwing an exception (this is a bug and should never happen)
+
 ```kotlin
 axon.dispatch(LoginIntent(username = "steve", password = "secret"))
     .catch { e ->
-        if (e is NoHandlerException) { /* no resolver registered */ }
+        when (e) {
+            is NoHandlerException -> { /* no resolver registered */ }
+            is ResolverException  -> { /* resolver bug — hide loading, report */ }
+        }
     }
     .collect { intent ->
         println(intent.result)
@@ -61,8 +77,10 @@ Not all intents need a collector — fire-and-forget intents can be dispatched w
 
 ---
 
-## Group
-`com.singularity_universe`
+## Artifact
+```
+com.singularity_universe.axon:core:1.0.0
+```
 
 ## License
 [Apache 2.0](LICENSE)
