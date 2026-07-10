@@ -1,5 +1,6 @@
 package com.singularity_universe.axon
 
+import com.singularity_universe.axon.exception.DuplicateResolverException
 import com.singularity_universe.axon.exception.NoHandlerException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
@@ -31,10 +32,15 @@ class Axon {
     /**
      * Registers a [Resolver] for the given [intentClass].
      *
+     * Each [Intent] type may only have one resolver. Registering a second resolver
+     * for the same type throws [DuplicateResolverException] to prevent silent overwrites.
+     *
      * @param intentClass the [KClass] of the [Intent] this resolver handles.
      * @param resolver the resolver to register.
+     * @throws DuplicateResolverException if a resolver for [intentClass] is already registered.
      */
     fun <I : Intent<R>, R> registerResolver(intentClass: KClass<I>, resolver: Resolver<I, R>) {
+        if (resolvers.containsKey(intentClass)) throw DuplicateResolverException(intentClass)
         resolvers[intentClass] = resolver
     }
 
