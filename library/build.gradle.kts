@@ -6,13 +6,13 @@ plugins {
     alias(libs.plugins.vanniktech.mavenPublish)
 }
 
-group = "io.github.kotlin"
+group = "com.singularity_universe"
 version = "1.0.0"
 
 kotlin {
     jvm()
     androidLibrary {
-        namespace = "org.jetbrains.kotlinx.multiplatform.library.template"
+        namespace = "com.singularity_universe.axon"
         compileSdk = libs.versions.android.compileSdk.get().toInt()
         minSdk = libs.versions.android.minSdk.get().toInt()
 
@@ -49,8 +49,8 @@ mavenPublishing {
     coordinates(group.toString(), "library", version.toString())
 
     pom {
-        name = "My library"
-        description = "A library."
+        name = "Axon"
+        description = "The backbone for business applications built around Intent → Process → Result."
         inceptionYear = "2024"
         url = "https://github.com/kotlin/multiplatform-library-template/"
         licenses {
