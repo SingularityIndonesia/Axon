@@ -42,13 +42,30 @@ demonstrates that no cleaner app-layer solution exists.
 ---
 
 ## ContextWrapper
-Execution context should wrap around intent execution, not live explicitly inside the Intent.
 
-When the same Intent type is dispatched by multiple instances concurrently, listeners may need
-a context to correctly identify which execution produced which result.
+**Status: needs re-evaluation before any implementation.**
 
-A `ContextWrapper` is the proposed solution — context surrounds the execution scope organically
-rather than being carried as a field on the Intent itself.
+Original concern: when the same Intent type is dispatched by multiple screen instances
+concurrently, there is no way to identify which execution produced which result.
+
+After further analysis, the three scenarios this was meant to address are already covered:
+
+1. **Result routing ambiguity** — `dispatch` is a `suspend fun` that returns directly to the
+   caller. Each coroutine gets its own result. There is no broadcast, no ambiguity. Two screens
+   dispatching the same Intent type each get their own result independently.
+
+2. **Stateful resolver collision** — if two screens share a stateful resolver and their states
+   collide, the correct fix is to make the resolver stateless. State belongs in the Intent
+   (input), the Result (output), or a dedicated service accessed via a session ID passed through
+   the Intent. A stateful resolver is a design smell, not a gap in Axon.
+
+3. **Cancellation when screen closes** — already handled by coroutine scopes. Cancelling the
+   caller's scope (e.g. `viewModelScope`) cancels any in-flight `dispatch` call naturally.
+
+**Why implementation is deferred:**
+No concrete scenario has been identified that cannot be cleanly solved by the three mechanisms
+above. Implementing `ContextWrapper` before such a scenario is found adds complexity without
+adding capability. The question to answer first: *what specifically cannot be done today?*
 
 ---
 
