@@ -3,7 +3,9 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
     alias(libs.plugins.android.kotlin.multiplatform.library)
-    alias(libs.plugins.vanniktech.mavenPublish)
+    alias(libs.plugins.nmcp)
+    `maven-publish`
+    signing
 }
 
 group = "com.singularity_universe.axon"
@@ -16,7 +18,7 @@ kotlin {
         compileSdk = libs.versions.android.compileSdk.get().toInt()
         minSdk = libs.versions.android.minSdk.get().toInt()
 
-        withJava() // enable java compilation support
+        withJava()
         withHostTestBuilder {}.configure {}
         withDeviceTestBuilder {
             sourceSetTreeName = "test"
@@ -43,36 +45,38 @@ kotlin {
     }
 }
 
-mavenPublishing {
-    publishToMavenCentral()
-
-    signAllPublications()
-
-    coordinates(group.toString(), "core", version.toString())
-
-    pom {
-        name = "Axon"
-        description = "The backbone for business applications built around Intent → Process → Result."
-        inceptionYear = "2024"
-        url = "https://github.com/kotlin/multiplatform-library-template/"
-        licenses {
-            license {
-                name = "XXX"
-                url = "YYY"
-                distribution = "ZZZ"
+publishing {
+    publications.withType<MavenPublication>().configureEach {
+        pom {
+            name = "Axon Core"
+            description = "The backbone for business applications built around Intent → Process → Result."
+            url = "https://github.com/SingularityIndonesia/Axon"
+            licenses {
+                license {
+                    name = "Apache License 2.0"
+                    url = "https://github.com/SingularityIndonesia/Axon/blob/main/LICENSE"
+                }
             }
-        }
-        developers {
-            developer {
-                id = "XXX"
-                name = "YYY"
-                url = "ZZZ"
+            developers {
+                developer {
+                    id = "SingularityIndonesia"
+                    name = "Singularity Indonesia"
+                    email = "singularity.indonesia@gmail.com"
+                }
             }
-        }
-        scm {
-            url = "XXX"
-            connection = "YYY"
-            developerConnection = "ZZZ"
+            scm {
+                connection = "scm:git:git://github.com/SingularityIndonesia/Axon.git"
+                developerConnection = "scm:git:ssh://github.com/SingularityIndonesia/Axon.git"
+                url = "https://github.com/SingularityIndonesia/Axon"
+            }
         }
     }
+}
+
+signing {
+    useInMemoryPgpKeys(
+        (project.findProperty("AXON_SIGNING_KEY") as String?) ?: System.getenv("AXON_SIGNING_KEY") ?: "",
+        (project.findProperty("AXON_SIGNING_PASSWORD") as String?) ?: System.getenv("AXON_SIGNING_PASSWORD") ?: ""
+    )
+    sign(publishing.publications)
 }

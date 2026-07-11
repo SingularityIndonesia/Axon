@@ -3,7 +3,7 @@ agp = "9.0.1"
 kotlin = "2.3.10"
 android-minSdk = "24"
 android-compileSdk = "36"
-vanniktechMavenPublish = "0.36.0"
+nmcp = "1.6.1"
 kotlinx-datetime = "0.6.2"
 kotlinx-coroutines = "1.10.1"
 ksp = "2.3.10"
@@ -22,5 +22,6 @@ kctfork-ksp = { module = "dev.zacsweers.kctfork:ksp", version.ref = "kctfork" }
 android-kotlin-multiplatform-library = { id = "com.android.kotlin.multiplatform.library", version.ref = "agp" }
 kotlinMultiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
 kotlinJvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
-vanniktech-mavenPublish = { id = "com.vanniktech.maven.publish", version.ref = "vanniktechMavenPublish" }
+nmcp = { id = "com.gradleup.nmcp", version.ref = "nmcp" }
+nmcp-aggregation = { id = "com.gradleup.nmcp.aggregation", version.ref = "nmcp" }
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
