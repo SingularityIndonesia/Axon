@@ -113,11 +113,11 @@ val axon = Axon(logger = MyLogger())
 ## Artifact
 
 ```
-com.singularity_universe.axon:core:1.0.0
+com.singularity-universe.axon:core:1.0.0
 ```
 
 ### Dependencies
 
 ```kotlin
-implementation("com.singularity_universe.axon:core:1.0.0")
+implementation("com.singularity-universe.axon:core:1.0.0")
 ```

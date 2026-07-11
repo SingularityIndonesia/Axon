@@ -8,8 +8,8 @@ plugins {
     signing
 }
 
-group = "com.singularity_universe.axon"
-version = "1.0.0"
+group = "com.singularity-universe.axon"
+version = "1.0.0-alpha1"
 
 kotlin {
     jvm()
@@ -74,9 +74,5 @@ publishing {
 }
 
 signing {
-    useInMemoryPgpKeys(
-        (project.findProperty("AXON_SIGNING_KEY") as String?) ?: System.getenv("AXON_SIGNING_KEY") ?: "",
-        (project.findProperty("AXON_SIGNING_PASSWORD") as String?) ?: System.getenv("AXON_SIGNING_PASSWORD") ?: ""
-    )
     sign(publishing.publications)
 }

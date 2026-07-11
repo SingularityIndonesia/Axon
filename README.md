@@ -141,8 +141,8 @@ when (val result = axon.dispatch(LoginIntent(username = "steve", password = "sec
 
 ## Artifacts
 ```
-com.singularity_universe.axon:core:1.0.0
-com.singularity_universe.axon:ksp:1.0.0
+com.singularity-universe.axon:core:1.0.0
+com.singularity-universe.axon:ksp:1.0.0
 ```
 
 ## License

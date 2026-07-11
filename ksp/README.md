@@ -83,7 +83,7 @@ plugins {
 }
 
 dependencies {
-    implementation("com.singularity_universe.axon:core:1.0.0")
-    ksp("com.singularity_universe.axon:ksp:1.0.0")
+    implementation("com.singularity-universe.axon:core:1.0.0")
+    ksp("com.singularity-universe.axon:ksp:1.0.0")
 }
 ```
