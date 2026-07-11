@@ -22,7 +22,22 @@ Possible directions:
 The first option is simpler and stays consistent with Axon's philosophy of not owning lifecycle.
 The second adds expressiveness but shifts responsibility into Axon's DI layer.
 
-No action yet — needs more concrete use cases before committing to a design.
+**Why implementation is deferred:**
+The biological analogy is instructive — the axon and the central nervous system are static,
+permanent configurations. The CNS is not torn down and rebuilt to handle a new stimulus; it
+processes requests through the same wiring indefinitely. The body does not create a new axon
+for every new process it needs to run.
+
+Applied to software: an `Axon` instance is the application's nervous system — a permanent,
+statically wired routing layer. If a dependency holds stale state after a navigation event,
+the more honest question is whether that is a problem with Axon's design, or a symptom of
+incorrect app modeling. Stateful data that needs to be scoped to a screen or session should
+arguably live in the app layer — passed via Intent, returned via Result, or managed by a
+dedicated stateful service whose clearing is an explicit, intentional business operation.
+
+Rebuilding `Axon` (or scoping its deps) to compensate for a modeling decision made above it
+may be solving the wrong problem. Implementation is deferred until a concrete use case
+demonstrates that no cleaner app-layer solution exists.
 
 ---
 
