@@ -1,5 +1,32 @@
 # FAQ
 
+## Is Axon a dependency injection library?
+
+No. Dependency injection in Axon is a **consequence of the design**, not the purpose.
+
+Axon is built to be the structural backbone of a software application — the skeleton that
+enforces one principle above all else: **Intent → Process → Result**. Every business operation
+enters as a declared intent, is processed by a dedicated resolver, and produces an explicit
+result. That is the contract Axon holds the application to.
+
+DI exists in Axon because resolvers need dependencies to do their work, and wiring those
+dependencies manually at scale is noise that obscures the structure. The KSP processor handles
+it at compile time so it stays out of the way. But it is a means, not an end.
+
+There is a common confusion in software development between **the purpose of a system** and
+**the patterns used to build it**. Developers invest heavily in architecture — dependency
+injection, clean architecture, MVVM, MVI, modularization — and these patterns can be valuable.
+But they are frequently treated as goals in themselves, layers of structure added for their own
+sake, until the code is so thoroughly organized that its actual purpose becomes difficult to
+see. The architecture meant to clarify the system ends up obfuscating it.
+
+Axon takes the opposite position: the architecture *is* the principle. Intent → Process →
+Result is not a pattern layered on top of the application — it is the application. DI,
+lazy initialization, compile-time validation — these are all in service of making that
+principle easy to follow consistently, at scale, without ceremony.
+
+---
+
 ## Why doesn't Axon support factory-scoped resolvers?
 
 Factory pattern exists to manage **stateful objects** — create on demand, destroy when done,
