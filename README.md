@@ -40,6 +40,14 @@ sealed class MyAppIntent<out R> : Intent<R>() {
 ### Resolver
 A `Resolver` handles a specific `Intent` type and returns a result directly. It is always paired with the `@Resolve` annotation, which declares which intent it handles and enables auto-registration via the KSP annotation processor.
 
+Resolvers **must be stateless**. A resolver is a pure transformation node — like a neuron in a
+neural network, it has no memory between invocations. All context needed to process a request
+must be carried by the Intent; all context the caller needs afterward must be carried by the
+Result. Internal mutable state in a resolver is a design error.
+
+This is not merely a guideline — it is a direct consequence of the Intent → Process → Result
+philosophy. State is context. Context belongs on the signal, not in the node.
+
 Resolvers **must never throw exceptions**. All outcomes — including errors — must be expressed through the result type.
 
 ```kotlin

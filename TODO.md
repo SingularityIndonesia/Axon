@@ -41,6 +41,34 @@ demonstrates that no cleaner app-layer solution exists.
 
 ---
 
+### Memory Efficiency — Dormant Resolvers
+
+Concern: once instantiated, resolvers and their dependencies live for the lifetime of `Axon`.
+There is no mechanism to release resources from a resolver that is no longer in active use.
+
+The proposed "dormant" concept would keep the routing entry intact but release the underlying
+instance and its dependencies from memory — with re-instantiation on next dispatch.
+
+**Why this is likely a non-issue:**
+
+A resolver that is correctly designed is **stateless**. A stateless object is just code — its
+memory footprint beyond the JVM bytecode is negligible. There is nothing meaningful to release.
+
+This insight is borrowed from neural networks: a neuron has no memory between activations. Its
+"state" is not stored inside the node — it is carried by the signal (Intent) that passes through
+it. Factory patterns exist to manage stateful objects. For stateless objects, the factory/destroy
+cycle adds complexity without reducing meaningful memory consumption.
+
+If a dependency holds expensive resources (open connections, thread pools, large caches), the
+correct solution is to make releasing those resources an explicit business operation — dispatching
+an intent that calls `service.close()`. Not a dormant mechanism inside Axon.
+
+**Conclusion:** dormant is deferred indefinitely. If resolvers are stateless as they should be,
+the problem it solves does not exist. If a resolver is stateful, the correct fix is to make it
+stateless — not to add lifecycle management to Axon.
+
+---
+
 ## ContextWrapper
 
 **Status: needs re-evaluation before any implementation.**
