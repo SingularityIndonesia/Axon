@@ -67,6 +67,10 @@ Both errors point to the exact file and line number.
 - `@Inject` must be on the **primary constructor**
 - Classes with a **no-arg constructor** are injectable without `@Inject`
 - Each `@Resolve` class must implement `Resolver<I, R>`
+- Resolvers **must be stateless** — all context needed to process a request must be carried by
+  the Intent, all context the caller needs afterward by the Result. Internal mutable state in a
+  resolver is a design error. Dependencies injected into a resolver should be stateless services,
+  not stateful holders.
 
 ---
 
