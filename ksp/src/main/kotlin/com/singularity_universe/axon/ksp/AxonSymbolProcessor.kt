@@ -188,7 +188,8 @@ class AxonSymbolProcessor(
         path.add(simpleName)
 
         val constructor = clazz.findInjectConstructor() ?: run {
-            logger.error("$simpleName must have an @Inject constructor.", clazz)
+            val context = if (path.isNotEmpty()) " Required by: ${path.joinToString(" → ")}" else ""
+            logger.error("$simpleName must have an @Inject constructor.$context", clazz)
             inStack.remove(key)
             path.removeLast()
             return
@@ -205,10 +206,12 @@ class AxonSymbolProcessor(
         path.removeLast()
     }
 
-    // Returns the @Inject-annotated primary constructor, or null if none exists.
+    // Returns the @Inject-annotated constructor, or the primary constructor if it has
+    // no parameters (implicitly injectable — @Inject is optional for no-arg constructors).
     private fun KSClassDeclaration.findInjectConstructor(): KSFunctionDeclaration? =
         primaryConstructor?.takeIf { constructor ->
             constructor.annotations.any { it.shortName.asString() == "Inject" }
+                || constructor.parameters.isEmpty()
         }
 
     private fun KSClassDeclaration.resolveIntentType(): KSType =
