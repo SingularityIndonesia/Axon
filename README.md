@@ -6,6 +6,8 @@ Axon is the backbone for business applications built around this philosophy.
 
 It places business processes at the center of the application, treating UI, databases, networks, files, and external services as equal I/O participants rather than architectural foundations.
 
+Most application frameworks are naturally UI-centric — tutorials start with screens, examples are organized around navigation, and business logic tends to gravitate toward wherever the framework provides the most convenience. This is a practical consequence of how those tools evolved, not a flaw in the people who use them. Axon simply starts from a different premise: the application is the process, not the interface. UI is one of many I/O channels — a way to deliver an Intent and render a Result, no different in principle from a network request or a scheduled job. When that distinction is clear in the architecture, testing becomes straightforward, platform changes become manageable, and business logic stays where it belongs.
+
 ---
 
 ## Core Concepts
