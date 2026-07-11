@@ -8,7 +8,11 @@ sealed class MyAppIntent<out R> : Intent<R>() {
         val username: String,
         val password: String
     ) : MyAppIntent<LoginIntent.LoginResult>() {
-        data class LoginResult(val token: String)
+        sealed class LoginResult {
+            data class LoginSuccess(val token: String) : LoginResult()
+            data object LoginBlocked : LoginResult()
+            data object UnableToProcess : LoginResult()
+        }
     }
 
     data class LogoutIntent(
