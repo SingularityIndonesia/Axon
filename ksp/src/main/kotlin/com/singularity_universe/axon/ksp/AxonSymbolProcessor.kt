@@ -114,7 +114,9 @@ class AxonSymbolProcessor(
         resolvers: List<KSClassDeclaration>
     ): Map<String, DependencyNode> {
         val graph = mutableMapOf<String, DependencyNode>()
-        resolvers.forEach { collectNode(it, graph) }
+        val inStack = mutableSetOf<String>()   // currently being traversed
+        val path = mutableListOf<String>()      // current traversal path for error reporting
+        resolvers.forEach { collectNode(it, graph, inStack, path) }
         return graph
     }
 
@@ -156,16 +158,39 @@ class AxonSymbolProcessor(
     /**
      * Recursively collects [clazz] and all its transitive @Inject dependencies
      * into [graph]. Already-visited nodes are skipped — shared deps are collected once.
+     *
+     * [inStack] tracks nodes currently being traversed in the active DFS path.
+     * [path] records simple names along that path for readable cycle error messages.
+     * If a node is encountered while already in [inStack], a circular dependency is reported.
      */
     private fun collectNode(
         clazz: KSClassDeclaration,
-        graph: MutableMap<String, DependencyNode>
+        graph: MutableMap<String, DependencyNode>,
+        inStack: MutableSet<String>,
+        path: MutableList<String>
     ) {
         val key = clazz.qualifiedName?.asString() ?: return
-        if (key in graph) return
+        val simpleName = clazz.simpleName.asString()
+
+        if (key in inStack) {
+            val cycleStart = path.indexOf(simpleName)
+            val cyclePath = (if (cycleStart >= 0) path.drop(cycleStart) else path) + simpleName
+            logger.error(
+                "Circular dependency detected: ${cyclePath.joinToString(" → ")}",
+                clazz
+            )
+            return
+        }
+
+        if (key in graph) return // already fully processed — shared dependency
+
+        inStack.add(key)
+        path.add(simpleName)
 
         val constructor = clazz.findInjectConstructor() ?: run {
-            logger.error("${clazz.simpleName.asString()} must have an @Inject constructor.", clazz)
+            logger.error("$simpleName must have an @Inject constructor.", clazz)
+            inStack.remove(key)
+            path.removeLast()
             return
         }
 
@@ -174,7 +199,10 @@ class AxonSymbolProcessor(
         }
 
         graph[key] = DependencyNode(clazz, constructor, params)
-        params.forEach { dep -> collectNode(dep, graph) }
+        params.forEach { dep -> collectNode(dep, graph, inStack, path) }
+
+        inStack.remove(key)
+        path.removeLast()
     }
 
     // Returns the @Inject-annotated primary constructor, or null if none exists.
