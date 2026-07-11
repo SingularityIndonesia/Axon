@@ -36,19 +36,24 @@ class AxonSymbolProcessor(
 
         if (resolverClasses.isEmpty()) return emptyList()
 
-        // Build the full dependency graph starting from all @Resolve classes
         val graph = buildDependencyGraph(resolverClasses)
+        val sharedKeys = findSharedNodes(graph)
+        val sorted = topologicalSort(graph)
 
-        // Log the graph for verification
+        // Log graph
         graph.values.forEach { node ->
+            val key = node.declaration.qualifiedName?.asString()
+            val sharedTag = if (key in sharedKeys) " [shared]" else ""
             if (node.params.isEmpty()) {
-                logger.info("Axon [graph]: ${node.declaration.simpleName.asString()} — no dependencies")
+                logger.info("Axon [graph]: ${node.declaration.simpleName.asString()}$sharedTag — no dependencies")
             } else {
                 val depNames = node.params.joinToString { it.simpleName.asString() }
-                logger.info("Axon [graph]: ${node.declaration.simpleName.asString()} — depends on [$depNames]")
+                logger.info("Axon [graph]: ${node.declaration.simpleName.asString()}$sharedTag — depends on [$depNames]")
             }
         }
+        logger.info("Axon [sorted]: ${sorted.joinToString(" → ") { it.declaration.simpleName.asString() }}")
 
+        val resolverKeys = resolverClasses.mapNotNull { it.qualifiedName?.asString() }.toSet()
         val sourceFiles = resolverClasses.mapNotNull { it.containingFile }
 
         val file = codeGenerator.createNewFile(
@@ -57,29 +62,43 @@ class AxonSymbolProcessor(
             fileName = "AxonRegistration"
         )
 
-        // Only generate registration for resolvers whose full dependency chain is resolved.
-        // Resolvers with constructor params are skipped until item 5-6 (topological sort + full generation).
-        val wiringReady = resolverClasses.filter { clazz ->
-            graph[clazz.qualifiedName?.asString()]?.params?.isEmpty() == true
-        }
-
         file.bufferedWriter().use { out ->
             out.write("package com.singularity_universe.axon.generated\n\n")
             out.write("import com.singularity_universe.axon.Axon\n")
 
-            wiringReady.forEach { clazz ->
-                val intentType = clazz.resolveIntentType()
-                out.write("import ${clazz.qualifiedName!!.asString()}\n")
-                out.write("import ${intentType.declaration.qualifiedName!!.asString()}\n")
+            // Imports — all classes in the graph + intent classes for resolvers
+            val imports = mutableSetOf<String>()
+            sorted.forEach { node -> imports.add(node.declaration.qualifiedName!!.asString()) }
+            resolverClasses.forEach { clazz ->
+                imports.add(clazz.resolveIntentType().declaration.qualifiedName!!.asString())
             }
+            imports.forEach { out.write("import $it\n") }
 
             out.write("\nfun Axon.init() {\n")
-            wiringReady.forEach { clazz ->
-                val intentType = clazz.resolveIntentType()
-                val intentName = intentType.declaration.simpleName.asString()
-                val resolverName = clazz.simpleName.asString()
-                out.write("    registerResolver($intentName::class, lazy { $resolverName() })\n")
+
+            // Lazy val for every node in topological order
+            sorted.forEach { node ->
+                val varName = node.declaration.simpleName.asString().toVarName()
+                val className = node.declaration.simpleName.asString()
+                if (node.params.isEmpty()) {
+                    out.write("    val $varName = lazy { $className() }\n")
+                } else {
+                    val args = node.params.joinToString(", ") { dep ->
+                        "${dep.simpleName.asString().toVarName()}.value"
+                    }
+                    out.write("    val $varName = lazy { $className($args) }\n")
+                }
             }
+
+            out.write("\n")
+
+            // registerResolver for @Resolve nodes only
+            resolverClasses.forEach { clazz ->
+                val intentName = clazz.resolveIntentType().declaration.simpleName.asString()
+                val varName = clazz.simpleName.asString().toVarName()
+                out.write("    registerResolver($intentName::class, $varName)\n")
+            }
+
             out.write("}\n")
         }
 
@@ -90,9 +109,6 @@ class AxonSymbolProcessor(
     /**
      * Builds the full dependency graph by recursively collecting all @Inject
      * dependencies reachable from the given [resolvers].
-     *
-     * The graph is keyed by fully qualified class name to ensure each class
-     * appears as a single node regardless of how many resolvers depend on it.
      */
     private fun buildDependencyGraph(
         resolvers: List<KSClassDeclaration>
@@ -103,21 +119,53 @@ class AxonSymbolProcessor(
     }
 
     /**
+     * Returns all nodes sorted in topological order — each node appears after
+     * all of its dependencies, making sequential instantiation safe.
+     */
+    private fun topologicalSort(graph: Map<String, DependencyNode>): List<DependencyNode> {
+        val visited = mutableSetOf<String>()
+        val sorted = mutableListOf<DependencyNode>()
+
+        fun visit(key: String) {
+            if (key in visited) return
+            visited.add(key)
+            val node = graph[key] ?: return
+            node.params.forEach { dep -> dep.qualifiedName?.asString()?.let { visit(it) } }
+            sorted.add(node)
+        }
+
+        graph.keys.forEach { visit(it) }
+        return sorted
+    }
+
+    /**
+     * Returns the set of qualified names depended upon by more than one node —
+     * these are shared singletons and must appear as a single lazy val in generated code.
+     */
+    private fun findSharedNodes(graph: Map<String, DependencyNode>): Set<String> {
+        val refCount = mutableMapOf<String, Int>()
+        graph.values.forEach { node ->
+            node.params.forEach { dep ->
+                val key = dep.qualifiedName?.asString() ?: return@forEach
+                refCount[key] = (refCount[key] ?: 0) + 1
+            }
+        }
+        return refCount.filter { it.value > 1 }.keys.toSet()
+    }
+
+    /**
      * Recursively collects [clazz] and all its transitive @Inject dependencies
-     * into [graph]. Already-visited nodes are skipped to avoid duplicate work.
+     * into [graph]. Already-visited nodes are skipped — shared deps are collected once.
      */
     private fun collectNode(
         clazz: KSClassDeclaration,
         graph: MutableMap<String, DependencyNode>
     ) {
         val key = clazz.qualifiedName?.asString() ?: return
-        if (key in graph) return // already visited — shared dependency, collect once
+        if (key in graph) return
 
         val constructor = clazz.findInjectConstructor() ?: run {
-            logger.error(
-                "${clazz.simpleName.asString()} must have an @Inject constructor.",
-                clazz
-            )
+            logger.error("${clazz.simpleName.asString()} must have an @Inject constructor.", clazz)
             return
         }
 
@@ -126,8 +174,6 @@ class AxonSymbolProcessor(
         }
 
         graph[key] = DependencyNode(clazz, constructor, params)
-
-        // Recurse into each dependency
         params.forEach { dep -> collectNode(dep, graph) }
     }
 
@@ -143,4 +189,8 @@ class AxonSymbolProcessor(
             .arguments
             .first()
             .value as KSType
+
+    // "AuthWebApi" → "authWebApi"
+    private fun String.toVarName(): String =
+        replaceFirstChar { it.lowercase() }
 }
