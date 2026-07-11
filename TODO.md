@@ -21,16 +21,16 @@ is resolved and wired at compile time via the dependency graph.
 - [x] 1. Add `@Inject` annotation to `:core`
 - [x] 2. KSP: read `@Inject` constructor from `@Resolve` classes
 - [x] 3. KSP: recursively collect all `@Inject` dependencies (build DAG)
-- [ ] 4. KSP: detect shared dependencies — one type = one lazy val, not duplicated
-- [ ] 5. KSP: topological sort DAG → correct generation order
-- [ ] 6. KSP: generate full lazy val chain + registerResolver in `init()`
-- [ ] 7. KSP: compile error if a dependency has no `@Inject` constructor
-- [ ] 8. KSP: compile error if circular dependency is detected
+- [x] 4. KSP: detect shared dependencies — one type = one lazy val, not duplicated
+- [x] 5. KSP: topological sort DAG → correct generation order
+- [x] 6. KSP: generate full lazy val chain + registerResolver in `init()`
+- [x] 7. KSP: compile error if a dependency has no `@Inject` constructor
+- [x] 8. KSP: compile error if circular dependency is detected
 
 ### Phase 2: Edge cases
 
-- [ ] 9.  Handle no-arg constructor without `@Inject` (treat as injectable)
-- [ ] 10. Clear error messages — name the exact class that has the problem
+- [x] 9.  Handle no-arg constructor without `@Inject` (treat as injectable)
+- [x] 10. Clear error messages — name the exact class that has the problem
 
 ### Out of scope (for now)
 - Interface binding (`@Bind`)
