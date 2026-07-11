@@ -147,3 +147,12 @@ com.singularity_universe.axon:ksp:1.0.0
 
 ## License
 [Apache 2.0](LICENSE)
+
+---
+
+## FAQ
+Common questions about Axon's design philosophy, scope, and trade-offs — including why Axon
+is not a DI library, why factory-scoped resolvers are not supported, and how session state
+and memory management are handled.
+
+→ [Read the FAQ](FAQ.md)
