@@ -1,12 +1,12 @@
 # Axon
 
-Software architecture has given us many valuable patterns — dependency injection, Clean Architecture, MVVM, MVI, modularization, and more. They help us build systems that are easier to organize, test, and maintain.
+Software architecture has given us many valuable patterns—dependency injection, Clean Architecture, MVVM, MVI, modularization, and more. They help us build systems that are easier to organize, test, and maintain.
 
-As applications grow, though, it's easy for the architecture itself to become the primary focus. Teams invest more and more effort into refining how the software is structured, while the business operations it exists to perform become scattered across layers and abstractions.
+As applications evolve, however, it is easy for the architecture itself to become the primary focus. Teams invest increasing effort in refining how software is structured, while the business operations it exists to perform become distributed across layers and abstractions.
 
-Sometimes, the architecture meant to clarify the system ends up obscuring it.
+Sometimes, the architecture intended to clarify the system ends up obscuring it.
 
-Axon starts from a different premise: **architecture should first express what the software does before it describes how the software is built.**
+Axon starts from a different premise: architecture should first express what the software is before it describes how the software is built.
 
 ---
 
@@ -14,13 +14,15 @@ Axon starts from a different premise: **architecture should first express what t
 
 Axon is the backbone for applications built around this philosophy.
 
-Instead of organizing software around UI, repositories, services, or infrastructure, Axon organizes it around business operations. UI, databases, networks, files, caches, and external services all become equal I/O participants — not architectural foundations.
+Rather than organizing software around UI, repositories, services, or infrastructure, Axon organizes it around business operations.
+
+UI, databases, networks, files, caches, and external services become equal I/O participants—not architectural foundations.
 
 ---
 
-## A Business Operation
+# A Business Operation
 
-Every business operation in Axon is expressed as a compile-time contract:
+Every business operation in Axon is expressed as a compile-time contract.
 
 ```
 Intent
@@ -32,17 +34,21 @@ Resolver
 Result
 ```
 
-- **Intent** — what is being requested
-- **Resolver** — how it gets processed
-- **Result** — every possible outcome
+The contract consists of three parts:
 
-These three parts are permanently linked and validated at compile time.
+- **Intent** — what is requested.
+- **Resolver** — how it is processed.
+- **Result** — every possible outcome.
+
+These three components are permanently linked together and validated at compile time.
 
 ---
 
 ## Intent
 
-An `Intent` is a pure, immutable object describing what the caller wants to accomplish. It carries only the information needed to perform the operation.
+An `Intent` is a pure immutable object describing what the caller wants to accomplish.
+
+It contains only the information required to perform the operation.
 
 ```kotlin
 data class LoginIntent(
@@ -58,7 +64,9 @@ data class LoginIntent(
 }
 ```
 
-The nested `Result` is a recommended convention, not a requirement. Its purpose is to make the business contract immediately discoverable — opening an intent should make it obvious what the operation does and what outcomes are possible.
+The nested `Result` is a recommended convention—not a requirement.
+
+Its purpose is simply to make the business contract immediately discoverable. Opening an intent should make it obvious what operation it represents and what outcomes are possible.
 
 ---
 
@@ -72,22 +80,48 @@ class LoginResolver @Inject constructor(
     private val authService: AuthenticationService
 ) : Resolver<LoginIntent, LoginIntent.Result> {
 
-    override suspend fun resolve(intent: LoginIntent): LoginIntent.Result {
-        val token = authService.login(intent.username, intent.password)
+    override suspend fun resolve(
+        intent: LoginIntent
+    ): LoginIntent.Result {
+
+        val token = authService.login(
+            intent.username,
+            intent.password
+        )
+
         return LoginSuccess(token)
     }
 }
 ```
 
-The `@Resolve` annotation and `Resolver<I, R>` interface are validated together at compile time. If any part of the contract becomes inconsistent — wrong intent, wrong result type, missing resolver — compilation fails. Business operations stay self-documenting and impossible to wire incorrectly.
+The `@Resolve` annotation and `Resolver<I, R>` interface are validated together.
 
-Resolvers must be **stateless**, **deterministic**, and **exception-free**. Expected failures belong in the result type. Thrown exceptions indicate programming errors and are surfaced as `ResolverException`.
+Axon verifies at compile time that:
+
+- the resolver handles the annotated intent,
+- the resolver returns the result declared by that intent,
+- every intent has a matching resolver,
+- no resolver accidentally implements the wrong business contract.
+
+If any part of the contract becomes inconsistent, compilation fails.
+
+Business operations remain self-documenting and impossible to wire incorrectly.
+
+Resolvers must also be:
+
+- stateless,
+- deterministic,
+- exception-free.
+
+Expected failures belong in the result type.
+
+Thrown exceptions indicate programming errors and are surfaced as `ResolverException`.
 
 ---
 
 ## Dependency Injection
 
-Axon includes a compile-time DI system powered by KSP. Just annotate your constructors and the processor wires everything automatically — no runtime reflection, no manual setup.
+Axon includes a compile-time dependency injection system powered by KSP.
 
 ```kotlin
 class AuthenticationService @Inject constructor(
@@ -96,50 +130,52 @@ class AuthenticationService @Inject constructor(
 )
 ```
 
-Need to depend on an interface? Use `@Bind` on the implementation:
+Features include:
 
-```kotlin
-interface Database
-
-@Bind(Database::class)
-class RoomDatabase @Inject constructor() : Database
-```
-
-What you get:
-- Constructor injection
-- Interface binding via `@Bind`
-- Lazy singleton creation
-- Compile-time dependency validation
-- Circular dependency detection
-- Zero runtime reflection
+- constructor injection
+- interface binding
+- lazy singleton creation
+- compile-time dependency validation
+- circular dependency detection
+- zero runtime reflection
 
 ---
 
 ## Axon
 
-`Axon` dispatches intents to their resolvers and returns the result directly.
+`Axon` dispatches intents to their corresponding resolvers.
 
 ```kotlin
-when (val result = axon.dispatch(LoginIntent(username = "steve", password = "secret"))) {
-    is LoginSuccess    -> println("welcome, token: ${result.token}")
-    is LoginBlocked    -> println("account is blocked")
-    is UnableToProcess -> println("something went wrong, try again")
-}
+val result = axon.dispatch(
+    LoginIntent(
+        username = "steve",
+        password = "secret"
+    )
+)
 ```
 
-Business outcomes go through the result type. Only infrastructure failures throw exceptions.
+The result is returned directly.
 
-With KSP, everything is wired for you:
+Business outcomes are represented by the result type.
+
+Only infrastructure failures throw exceptions.
+
+Resolvers are instantiated lazily.
+
+With KSP:
 
 ```kotlin
 val axon = Axon()
-axon.init() // generated by KSP — all resolvers and dependencies wired as lazy singletons
+axon.init()
 ```
 
-Without KSP, you can wire manually:
+Without KSP:
 
 ```kotlin
-axon.registerResolver(LoginIntent::class, lazy { LoginResolver(service) })
+axon.registerResolver(
+    LoginIntent::class,
+    lazy { LoginResolver(service) }
+)
 ```
 
 ---
@@ -147,14 +183,14 @@ axon.registerResolver(LoginIntent::class, lazy { LoginResolver(service) })
 ## Modules
 
 | Module | Purpose |
-|--------|---------|
-| `core` | Runtime — `Intent`, `Resolver`, `@Resolve`, `@Inject`, `@Bind`, `Axon` |
-| `ksp`  | Compile-time code generation — resolves the dependency graph, generates `Axon.init()` |
+|---------|---------|
+| core | Runtime |
+| ksp | Compile-time code generation |
 
 ```kotlin
 // build.gradle.kts
 plugins {
-    id("com.google.devtools.ksp") version "2.3.10"
+    id("com.google.devtools.ksp") version <ksp-version>
 }
 
 dependencies {
@@ -165,8 +201,15 @@ dependencies {
 
 ---
 
+## Artifacts
+
+```
+com.singularity-universe.axon:core:1.0.0-alpha2
+com.singularity-universe.axon:ksp:1.0.0-alpha2
+```
+
+---
+
 ## FAQ
 
-Common questions about Axon's design philosophy, scope, and trade-offs — including why Axon is not a DI library, why resolvers are stateless, and how session state and memory management are handled.
-
-→ [Read the FAQ](FAQ.md)
+→ [FAQ.md](FAQ.md)
