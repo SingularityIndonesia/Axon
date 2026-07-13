@@ -151,9 +151,16 @@ axon.registerResolver(LoginIntent::class, lazy { LoginResolver(service) })
 | `core` | Runtime — `Intent`, `Resolver`, `@Resolve`, `@Inject`, `@Bind`, `Axon` |
 | `ksp`  | Compile-time code generation — resolves the dependency graph, generates `Axon.init()` |
 
-```
-com.singularity-universe.axon:core:1.0.0-alpha2
-com.singularity-universe.axon:ksp:1.0.0-alpha2
+```kotlin
+// build.gradle.kts
+plugins {
+    id("com.google.devtools.ksp") version "2.3.10"
+}
+
+dependencies {
+    implementation("com.singularity-universe.axon:core:1.0.0-alpha2")
+    ksp("com.singularity-universe.axon:ksp:1.0.0-alpha2")
+}
 ```
 
 ---
