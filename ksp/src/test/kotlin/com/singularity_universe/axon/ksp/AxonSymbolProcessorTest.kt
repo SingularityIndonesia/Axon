@@ -36,7 +36,7 @@ class AxonSymbolProcessorTest {
     private val simpleIntent = SourceFile.kotlin(
         "SimpleIntent.kt", """
         import com.singularity_universe.axon.Intent
-        class SimpleIntent : Intent<String>()
+        class SimpleIntent : Intent<String>(null)
         """.trimIndent()
     )
 
@@ -102,8 +102,8 @@ class AxonSymbolProcessorTest {
         val result = compile(
             SourceFile.kotlin("Intents.kt", """
                 import com.singularity_universe.axon.Intent
-                class IntentA : Intent<String>()
-                class IntentB : Intent<String>()
+                class IntentA : Intent<String>(null)
+                class IntentB : Intent<String>(null)
             """.trimIndent()),
             SourceFile.kotlin("SharedService.kt", """
                 import com.singularity_universe.axon.Inject
@@ -199,9 +199,9 @@ class AxonSymbolProcessorTest {
         val result = compile(
             SourceFile.kotlin("Intents.kt", """
                 import com.singularity_universe.axon.Intent
-                class IntentA : Intent<String>()
-                class IntentB : Intent<String>()
-                class IntentC : Intent<String>()
+                class IntentA : Intent<String>(null)
+                class IntentB : Intent<String>(null)
+                class IntentC : Intent<String>(null)
             """.trimIndent()),
             SourceFile.kotlin("Resolvers.kt", """
                 import com.singularity_universe.axon.Resolve
@@ -285,8 +285,8 @@ class AxonSymbolProcessorTest {
         val result = compile(
             SourceFile.kotlin("Intents.kt", """
                 import com.singularity_universe.axon.Intent
-                class IntentA : Intent<String>()
-                class IntentB : Intent<String>()
+                class IntentA : Intent<String>(null)
+                class IntentB : Intent<String>(null)
             """.trimIndent()),
             SourceFile.kotlin("Repository.kt", """
                 import com.singularity_universe.axon.Bind
@@ -325,7 +325,7 @@ class AxonSymbolProcessorTest {
         val result = compile(
             SourceFile.kotlin("DataIntent.kt", """
                 import com.singularity_universe.axon.Intent
-                data class DataIntent(val value: String) : Intent<String>()
+                data class DataIntent(val value: String) : Intent<String>(null)
             """.trimIndent()),
             SourceFile.kotlin("DataIntentResolver.kt", """
                 import com.singularity_universe.axon.Resolve
@@ -360,6 +360,49 @@ class AxonSymbolProcessorTest {
         assertTrue(
             !result.messages.contains("is a data class"),
             "Regular class Intent should not trigger data class warning"
+        )
+    }
+
+    @Test
+    fun `Intent with default parent value emits compile error`() {
+        val result = compile(
+            SourceFile.kotlin("LazyIntent.kt", """
+                import com.singularity_universe.axon.Intent
+                class LazyIntent(parent: Intent<*>? = null) : Intent<String>(parent)
+            """.trimIndent()),
+            SourceFile.kotlin("LazyIntentResolver.kt", """
+                import com.singularity_universe.axon.Resolve
+                import com.singularity_universe.axon.Resolver
+                @Resolve(LazyIntent::class)
+                class LazyIntentResolver : Resolver<LazyIntent, String> {
+                    override suspend fun resolve(intent: LazyIntent): String = "ok"
+                }
+            """.trimIndent())
+        )
+        assertEquals(KotlinCompilation.ExitCode.COMPILATION_ERROR, result.exitCode)
+        assertTrue(
+            result.messages.contains("has a default value for 'parent'"),
+            "Expected parent default value error but got:\n${result.messages}"
+        )
+    }
+
+    @Test
+    fun `Intent with required parent does not emit error`() {
+        val result = compile(
+            simpleIntent,
+            SourceFile.kotlin("SimpleResolver.kt", """
+                import com.singularity_universe.axon.Resolve
+                import com.singularity_universe.axon.Resolver
+                @Resolve(SimpleIntent::class)
+                class SimpleResolver : Resolver<SimpleIntent, String> {
+                    override suspend fun resolve(intent: SimpleIntent): String = "ok"
+                }
+            """.trimIndent())
+        )
+        assertEquals(KotlinCompilation.ExitCode.OK, result.exitCode)
+        assertTrue(
+            !result.messages.contains("has a default value for 'parent'"),
+            "Required parent Intent should not trigger error"
         )
     }
 

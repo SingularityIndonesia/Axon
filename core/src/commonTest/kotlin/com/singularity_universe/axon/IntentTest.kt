@@ -8,33 +8,33 @@ import kotlin.test.assertTrue
 
 class IntentTest {
 
-    private data class SomeIntent(val value: String) : Intent<String>()
+    private class SomeIntent(val value: String, parent: Intent<*>? = null) : Intent<String>(parent)
 
     @Test
     fun `createdAt is set at construction time`() {
         val before = Clock.System.now().toEpochMilliseconds()
-        val intent = SomeIntent("test")
+        val intent = SomeIntent("test", parent = null)
         val after = Clock.System.now().toEpochMilliseconds()
         assertTrue(intent.createdAt >= before, "createdAt must not be before construction")
         assertTrue(intent.createdAt <= after, "createdAt must not be after construction")
     }
 
     @Test
-    fun `parent defaults to null`() {
-        assertNull(SomeIntent("test").parent)
+    fun `parent is null when explicitly passed as null`() {
+        assertNull(SomeIntent("test", parent = null).parent)
     }
 
     @Test
     fun `parent can be set at construction time`() {
-        val parent = SomeIntent("parent")
+        val parent = SomeIntent("parent", parent = null)
         val child = object : Intent<String>(parent) {}
         assertEquals(parent, child.parent)
     }
 
     @Test
     fun `two intents created sequentially have non-decreasing createdAt`() {
-        val first = SomeIntent("first")
-        val second = SomeIntent("second")
+        val first = SomeIntent("first", parent = null)
+        val second = SomeIntent("second", parent = null)
         assertTrue(second.createdAt >= first.createdAt)
     }
 }

@@ -4,7 +4,7 @@ import com.singularity_universe.axon.Intent
 
 class LoginIntent(
     val data: LoginData,
-    parent: Intent<*>? = null,
+    parent: Intent<*>?,
 ) : MyAppIntent<LoginIntent.LoginResult>(parent) {
     data class LoginData(
         val username: String,

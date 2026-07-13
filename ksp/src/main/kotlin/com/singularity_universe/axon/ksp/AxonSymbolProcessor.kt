@@ -38,14 +38,30 @@ class AxonSymbolProcessor(
         if (resolverClasses.isEmpty()) return emptyList()
 
         // Warn if any Intent type used in @Resolve is a data class
+        // Error if any Intent type has a parent constructor parameter with a default value
         resolverClasses.forEach { clazz ->
             val intentDeclaration = clazz.resolveIntentType().declaration as? KSClassDeclaration
-            if (intentDeclaration != null && Modifier.DATA in intentDeclaration.modifiers) {
+                ?: return@forEach
+
+            if (Modifier.DATA in intentDeclaration.modifiers) {
                 logger.warn(
                     "[Axon] ${intentDeclaration.simpleName.asString()} is a data class. " +
                     "It is not recommended to use a data class as an Intent — " +
                     "copy() produces a new instance, which breaks the parent chain and loses the original intent's identity.",
                     intentDeclaration
+                )
+            }
+
+            val parentParam = intentDeclaration.primaryConstructor
+                ?.parameters
+                ?.firstOrNull { it.name?.asString() == "parent" }
+
+            if (parentParam != null && parentParam.hasDefault) {
+                logger.error(
+                    "[Axon] ${intentDeclaration.simpleName.asString()} has a default value for 'parent'. " +
+                    "The parent parameter must be required — callers must explicitly pass parent = null " +
+                    "or a real parent intent. A default value allows the parent chain to be silently omitted.",
+                    parentParam
                 )
             }
         }

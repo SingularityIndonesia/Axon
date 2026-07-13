@@ -21,7 +21,7 @@ abstract class Intent<out R>(
      * Set once at construction time and permanently bound to this instance.
      * Intents are not value objects and cannot be copied — parent is always preserved.
      */
-    val parent: Intent<*>? = null
+    val parent: Intent<*>?
 ) {
     /**
      * The timestamp (epoch milliseconds) at which this intent was created.
