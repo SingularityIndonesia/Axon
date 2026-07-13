@@ -55,6 +55,29 @@ Rather than relying on runtime testing or convention, Axon ensures the structure
 
 ---
 
+## Why does Intent have a `parent`?
+
+Every intent carries an optional reference to the intent that spawned it.
+
+The idea is that a business application is not a flat collection of isolated operations — it is a living sequence of causally connected actions. When one operation triggers another, the second is a consequence of the first. The `parent` reference makes that relationship explicit and permanent.
+
+```
+AppStartIntent (parent = null)
+    └─ GoToDashboardIntent (parent = AppStartIntent)
+        └─ GoToProductListIntent (parent = GoToDashboardIntent)
+            └─ AddToCartIntent (parent = GoToProductListIntent)
+```
+
+Walking the chain backward from any intent tells the complete story of how the system arrived at that operation.
+
+`parent = null` is always valid. Intents triggered from outside any running operation — push notifications, system events, application entry points — are natural roots with no prior cause.
+
+The deeper vision is that the application itself starts as an intent. The UI, background work, and side effects all run within intent scopes. A dashboard does not simply open — it opens *because* of an intent, and everything that happens while it is open happens *within* that intent's scope. This makes the full history of any system state reconstructable from the chain.
+
+> Automatic parent propagation — where Axon injects `parent` from the current dispatch context without the caller setting it manually — is a planned feature.
+
+---
+
 ## Why is it not recommended to declare an Intent as a `data class`?
 
 This is a philosophical consequence of what an intent represents.
