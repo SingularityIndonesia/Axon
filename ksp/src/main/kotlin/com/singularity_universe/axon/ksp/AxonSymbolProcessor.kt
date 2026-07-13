@@ -9,6 +9,7 @@ import com.google.devtools.ksp.symbol.KSAnnotated
 import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.google.devtools.ksp.symbol.KSFunctionDeclaration
 import com.google.devtools.ksp.symbol.KSType
+import com.google.devtools.ksp.symbol.Modifier
 
 /**
  * Represents a single node in the dependency graph.
@@ -35,6 +36,19 @@ class AxonSymbolProcessor(
             .toList()
 
         if (resolverClasses.isEmpty()) return emptyList()
+
+        // Warn if any Intent type used in @Resolve is a data class
+        resolverClasses.forEach { clazz ->
+            val intentDeclaration = clazz.resolveIntentType().declaration as? KSClassDeclaration
+            if (intentDeclaration != null && Modifier.DATA in intentDeclaration.modifiers) {
+                logger.warn(
+                    "[Axon] ${intentDeclaration.simpleName.asString()} is a data class. " +
+                    "It is not recommended to use a data class as an Intent — " +
+                    "copy() produces a new instance, which breaks the parent chain and loses the original intent's identity.",
+                    intentDeclaration
+                )
+            }
+        }
 
         // Build bind map: interface qualified name → concrete implementation
         val bindMap: Map<String, KSClassDeclaration> = resolver
