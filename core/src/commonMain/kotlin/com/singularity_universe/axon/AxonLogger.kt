@@ -1,6 +1,6 @@
 package com.singularity_universe.axon
 
-import com.singularity_universe.axon.untils.Log
+import com.singularity_universe.axon.utils.Log
 
 /**
  * Logger interface for [Axon] internal events.

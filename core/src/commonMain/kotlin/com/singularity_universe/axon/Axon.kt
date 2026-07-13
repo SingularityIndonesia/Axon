@@ -3,7 +3,7 @@ package com.singularity_universe.axon
 import com.singularity_universe.axon.exception.DuplicateResolverException
 import com.singularity_universe.axon.exception.NoHandlerException
 import com.singularity_universe.axon.exception.ResolverException
-import com.singularity_universe.axon.untils.Log
+import com.singularity_universe.axon.utils.Log
 import kotlin.reflect.KClass
 
 /**

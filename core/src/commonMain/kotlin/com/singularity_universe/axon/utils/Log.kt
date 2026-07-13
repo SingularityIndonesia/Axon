@@ -1,4 +1,4 @@
-package com.singularity_universe.axon.untils
+package com.singularity_universe.axon.utils
 
 
 object Log {
