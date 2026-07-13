@@ -321,6 +321,49 @@ class AxonSymbolProcessorTest {
     }
 
     @Test
+    fun `data class Intent emits warning`() {
+        val result = compile(
+            SourceFile.kotlin("DataIntent.kt", """
+                import com.singularity_universe.axon.Intent
+                data class DataIntent(val value: String) : Intent<String>()
+            """.trimIndent()),
+            SourceFile.kotlin("DataIntentResolver.kt", """
+                import com.singularity_universe.axon.Resolve
+                import com.singularity_universe.axon.Resolver
+                @Resolve(DataIntent::class)
+                class DataIntentResolver : Resolver<DataIntent, String> {
+                    override suspend fun resolve(intent: DataIntent): String = intent.value
+                }
+            """.trimIndent())
+        )
+        assertEquals(KotlinCompilation.ExitCode.OK, result.exitCode)
+        assertTrue(
+            result.messages.contains("is a data class"),
+            "Expected data class warning but got:\n${result.messages}"
+        )
+    }
+
+    @Test
+    fun `regular class Intent does not emit data class warning`() {
+        val result = compile(
+            simpleIntent,
+            SourceFile.kotlin("SimpleResolver.kt", """
+                import com.singularity_universe.axon.Resolve
+                import com.singularity_universe.axon.Resolver
+                @Resolve(SimpleIntent::class)
+                class SimpleResolver : Resolver<SimpleIntent, String> {
+                    override suspend fun resolve(intent: SimpleIntent): String = "ok"
+                }
+            """.trimIndent())
+        )
+        assertEquals(KotlinCompilation.ExitCode.OK, result.exitCode)
+        assertTrue(
+            !result.messages.contains("is a data class"),
+            "Regular class Intent should not trigger data class warning"
+        )
+    }
+
+    @Test
     fun `circular dependency emits compile error`() {
         val result = compile(
             simpleIntent,
