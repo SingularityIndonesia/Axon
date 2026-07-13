@@ -10,11 +10,13 @@ nmcpAggregation {
     centralPortal {
         username.set(
             (project.findProperty("AXON_SONATYPE_USERNAME") as String?)
-                ?: System.getenv("AXON_SONATYPE_USERNAME") ?: ""
+                ?: System.getenv("AXON_SONATYPE_USERNAME")
+                ?: error("AXON_SONATYPE_USERNAME is not set")
         )
         password.set(
             (project.findProperty("AXON_SONATYPE_PASSWORD") as String?)
-                ?: System.getenv("AXON_SONATYPE_PASSWORD") ?: ""
+                ?: System.getenv("AXON_SONATYPE_PASSWORD")
+                ?: error("AXON_SONATYPE_PASSWORD is not set")
         )
         publishingType.set("AUTOMATIC")
     }
