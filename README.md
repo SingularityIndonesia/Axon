@@ -72,6 +72,33 @@ The nested `Result` is a recommended convention—not a requirement.
 
 Its purpose is simply to make the business contract immediately discoverable. Opening an intent should make it obvious what operation it represents and what outcomes are possible.
 
+### The Parent Chain
+
+Every intent carries an optional reference to the intent that spawned it.
+
+```
+AppStartIntent (parent = null)
+    └─ GoToDashboardIntent (parent = AppStartIntent)
+        └─ GoToProductListIntent (parent = GoToDashboardIntent)
+            └─ AddToCartIntent (parent = GoToProductListIntent)
+```
+
+This forms a traceable chain of operations — every action in the system knows what caused it.
+
+`parent = null` is always valid. Intents triggered from outside any operation scope — such as a push notification, a system event, or an application entry point — naturally have no parent.
+
+```kotlin
+// Standalone — no parent
+axon.dispatch(PushNotificationIntent(payload))
+
+// Triggered from within an operation — parent is the current scope
+axon.dispatch(GoToProductListIntent(parent = currentIntent))
+```
+
+The goal is that every operation is either a root or a traceable consequence of another operation. The full history of how the system arrived at any given state can always be reconstructed by walking the parent chain.
+
+> **Note:** Automatic parent injection from scope — where Axon sets `parent` from the current dispatch context without the caller touching it — is a planned feature. The design intent is that callers should never need to wire the parent manually.
+
 ### Why not `data class`?
 
 It is not recommended to declare an `Intent` as a `data class`. This is a philosophical consequence of what an intent represents.
