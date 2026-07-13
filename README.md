@@ -210,8 +210,8 @@ plugins {
 }
 
 dependencies {
-    implementation("com.singularity-universe.axon:core:1.0.0-alpha3")
-    ksp("com.singularity-universe.axon:ksp:1.0.0-alpha3")
+    implementation("com.singularity-universe.axon:core:1.0.0-alpha4")
+    ksp("com.singularity-universe.axon:ksp:1.0.0-alpha4")
 }
 ```
 
@@ -220,8 +220,8 @@ dependencies {
 ## Artifacts
 
 ```
-com.singularity-universe.axon:core:1.0.0-alpha3
-com.singularity-universe.axon:ksp:1.0.0-alpha3
+com.singularity-universe.axon:core:1.0.0-alpha4
+com.singularity-universe.axon:ksp:1.0.0-alpha4
 ```
 
 ---

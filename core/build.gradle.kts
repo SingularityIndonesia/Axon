@@ -9,7 +9,7 @@ plugins {
 }
 
 group = "com.singularity-universe.axon"
-version = "1.0.0-alpha3"
+version = "1.0.0-alpha4"
 
 kotlin {
     jvm()
