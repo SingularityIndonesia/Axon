@@ -1,10 +1,9 @@
 # Axon
+Sometimes, the architecture intended to clarify the system ends up obscuring it.
 
 Software architecture has given us many valuable patterns—dependency injection, Clean Architecture, MVVM, MVI, modularization, and more. They help us build systems that are easier to organize, test, and maintain.
 
 As applications evolve, however, it is easy for the architecture itself to become the primary focus. Teams invest increasing effort in refining how software is structured, while the business operations it exists to perform become distributed across layers and abstractions.
-
-Sometimes, the architecture intended to clarify the system ends up obscuring it.
 
 Axon starts from a different premise: architecture should first express what the software is before it describes how the software is built.
 
