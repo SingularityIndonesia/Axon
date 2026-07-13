@@ -43,7 +43,7 @@ These three declarations describe the same business contract from different pers
 For example, this is valid:
 
 ```kotlin
-data class LoginIntent(...) : Intent<LoginResult>()
+class LoginIntent(...) : Intent<LoginResult>()
 
 @Resolve(LoginIntent::class)
 class LoginResolver : Resolver<LoginIntent, LoginResult>
@@ -52,6 +52,36 @@ class LoginResolver : Resolver<LoginIntent, LoginResult>
 Changing any part of that contract without updating the others causes a compile-time error.
 
 Rather than relying on runtime testing or convention, Axon ensures the structure of every business operation is correct before the application runs.
+
+---
+
+## Why is it not recommended to declare an Intent as a `data class`?
+
+This is a philosophical consequence of what an intent represents.
+
+A `data class` models a **value**. Two instances with the same fields are considered equal and interchangeable. Kotlin generates structural `equals()`, `hashCode()`, and `copy()` accordingly.
+
+But an intent is not a value. It is a **command** — a unique, irreversible act of will directed at the system. Two login attempts with the same credentials are two distinct operations, not the same operation expressed twice. Treating them as equal is semantically wrong.
+
+The more concrete problem is `copy()`. Calling `copy()` on an intent produces a new instance with different identity. If the original intent had a parent, the copy does not — the history chain is silently severed.
+
+```kotlin
+val original = LoginIntent(data = loginData, parent = previousIntent)
+val copy = original.copy(data = loginData) // parent is gone
+```
+
+Axon's intent model carries a `parent` reference precisely to preserve the chain of operations that led to the current one. A `data class` undermines this by making it easy — and syntactically normal — to produce orphaned intents.
+
+For this reason, Axon's KSP processor emits a compile-time warning whenever a `data class` is used as an intent type in a `@Resolve` annotation.
+
+Declare intents as regular classes:
+
+```kotlin
+class LoginIntent(
+    val data: LoginData,
+    parent: Intent<*>? = null
+) : Intent<LoginIntent.Result>(parent)
+```
 
 ---
 
