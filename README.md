@@ -50,10 +50,15 @@ An `Intent` is a pure immutable object describing what the caller wants to accom
 It contains only the information required to perform the operation.
 
 ```kotlin
-data class LoginIntent(
-    val username: String,
-    val password: String
-) : Intent<LoginIntent.Result>() {
+class LoginIntent(
+    val data: LoginData,
+    parent: Intent<*>? = null
+) : Intent<LoginIntent.Result>(parent) {
+
+    data class LoginData(
+        val username: String,
+        val password: String
+    )
 
     sealed class Result {
         data class LoginSuccess(val token: String) : Result()
@@ -66,6 +71,16 @@ data class LoginIntent(
 The nested `Result` is a recommended convention—not a requirement.
 
 Its purpose is simply to make the business contract immediately discoverable. Opening an intent should make it obvious what operation it represents and what outcomes are possible.
+
+### Why not `data class`?
+
+It is not recommended to declare an `Intent` as a `data class`. This is a philosophical consequence of what an intent represents.
+
+A `data class` models a **value** — two instances with the same fields are considered equal and interchangeable. But an intent is not a value. It is a **command** — a unique, irreversible act of will. Two login attempts with identical credentials are two distinct operations, not the same thing expressed twice.
+
+`data class` also generates a `copy()` method. Calling `copy()` on an intent produces a structurally identical but identity-different object. This silently severs the parent chain and creates a new intent with no history — the original intent is effectively lost.
+
+Axon enforces this at compile time: the KSP processor will emit a warning if an intent type bound via `@Resolve` is declared as a `data class`.
 
 ---
 
@@ -84,8 +99,8 @@ class LoginResolver @Inject constructor(
     ): LoginIntent.Result {
 
         val token = authService.login(
-            intent.username,
-            intent.password
+            intent.data.username,
+            intent.data.password
         )
 
         return LoginSuccess(token)
@@ -147,8 +162,10 @@ Features include:
 ```kotlin
 val result = axon.dispatch(
     LoginIntent(
-        username = "steve",
-        password = "secret"
+        data = LoginIntent.LoginData(
+            username = "steve",
+            password = "secret"
+        )
     )
 )
 ```
