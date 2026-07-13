@@ -2,12 +2,17 @@ package intent
 
 import com.singularity_universe.axon.Intent
 
-sealed class MyAppIntent<out R> : Intent<R>() {
+sealed class MyAppIntent<out R>(parent: Intent<*>? = null) : Intent<R>(parent) {
 
-    data class LoginIntent(
-        val username: String,
-        val password: String
-    ) : MyAppIntent<LoginIntent.LoginResult>() {
+    class LoginIntent(
+        val data: LoginData,
+        parent: Intent<*>? = null,
+    ) : MyAppIntent<LoginIntent.LoginResult>(parent) {
+        data class LoginData(
+            val username: String,
+            val password: String,
+        )
+
         sealed class LoginResult {
             data class LoginSuccess(val token: String) : LoginResult()
             data object LoginBlocked : LoginResult()
@@ -15,15 +20,17 @@ sealed class MyAppIntent<out R> : Intent<R>() {
         }
     }
 
-    data class LogoutIntent(
-        val userId: String
-    ) : MyAppIntent<LogoutIntent.LogoutResult>() {
+    class LogoutIntent(
+        val userId: String,
+        parent: Intent<*>? = null,
+    ) : MyAppIntent<LogoutIntent.LogoutResult>(parent) {
         data class LogoutResult(val success: Boolean)
     }
 
-    data class DeleteAccountIntent(
-        val userId: String
-    ) : MyAppIntent<DeleteAccountIntent.DeleteAccountResult>() {
+    class DeleteAccountIntent(
+        val userId: String,
+        parent: Intent<*>? = null,
+    ) : MyAppIntent<DeleteAccountIntent.DeleteAccountResult>(parent) {
         data class DeleteAccountResult(val success: Boolean)
     }
 }

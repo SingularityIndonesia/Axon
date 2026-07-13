@@ -13,7 +13,7 @@ class LoginResolver @Inject constructor(
     private val authService: AuthenticationService
 ) : Resolver<LoginIntent, LoginResult> {
     override suspend fun resolve(intent: LoginIntent): LoginResult {
-        val token = authService.login(intent.username, intent.password)
+        val token = authService.login(intent.data.username, intent.data.password)
         return LoginSuccess(token = token)
     }
 }

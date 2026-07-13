@@ -14,17 +14,17 @@ import kotlinx.datetime.Clock
  *
  * @param R covariant type of the result this intent is expected to produce.
  */
-abstract class Intent<out R> {
-
+abstract class Intent<out R>(
+    /**
+     * The parent intent that spawned this intent, or null if this is a top-level intent.
+     *
+     * Set once at construction time and permanently bound to this instance.
+     * Intents are not value objects and cannot be copied — parent is always preserved.
+     */
+    val parent: Intent<*>? = null
+) {
     /**
      * The timestamp (epoch milliseconds) at which this intent was created.
      */
     val createdAt: Long = Clock.System.now().toEpochMilliseconds()
-
-    /**
-     * The parent intent that spawned this intent, or null if this is a top-level intent.
-     *
-     * A child intent is aware that a parent exists but does not know its specific type.
-     */
-    open val parent: Intent<*>? = null
 }
