@@ -45,8 +45,21 @@ kotlin {
     }
 }
 
+val javadocJar by tasks.registering(Jar::class) {
+    archiveClassifier.set("javadoc")
+}
+
+nmcp {
+    publishAllPublicationsToCentralPortal {
+        username = providers.gradleProperty("AXON_SONATYPE_USERNAME")
+        password = providers.gradleProperty("AXON_SONATYPE_PASSWORD")
+        publishingType = "AUTOMATIC"
+    }
+}
+
 publishing {
     publications.withType<MavenPublication>().configureEach {
+        artifact(javadocJar)
         pom {
             name = "Axon Core"
             description = "The backbone for business applications built around Intent → Process → Result."
@@ -75,4 +88,8 @@ publishing {
 
 signing {
     sign(publishing.publications)
+}
+
+tasks.withType<AbstractPublishToMaven>().configureEach {
+    mustRunAfter(tasks.withType<Sign>())
 }

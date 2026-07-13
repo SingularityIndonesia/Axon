@@ -22,6 +22,14 @@ java {
     withSourcesJar()
 }
 
+nmcp {
+    publishAllPublicationsToCentralPortal {
+        username = providers.gradleProperty("AXON_SONATYPE_USERNAME")
+        password = providers.gradleProperty("AXON_SONATYPE_PASSWORD")
+        publishingType = "AUTOMATIC"
+    }
+}
+
 publishing {
     publications {
         create<MavenPublication>("mavenKotlin") {
