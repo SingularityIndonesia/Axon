@@ -2,106 +2,182 @@
 
 ## Is Axon a dependency injection library?
 
-No. Dependency injection in Axon is a **consequence of the design**, not the purpose.
+No.
 
-Axon is built to be the structural backbone of a software application — the skeleton that
-enforces one principle above all else: **Intent → Process → Result**. Every business operation
-enters as a declared intent, is processed by a dedicated resolver, and produces an explicit
-result. That is the contract Axon holds the application to.
+Dependency injection is a supporting feature, not Axon's purpose.
 
-DI exists in Axon because resolvers need dependencies to do their work, and wiring those
-dependencies manually at scale is noise that obscures the structure. The KSP processor handles
-it at compile time so it stays out of the way. But it is a means, not an end.
+Axon is designed around a simple principle:
 
-There is a common confusion in software development between **the purpose of a system** and
-**the patterns used to build it**. Developers invest heavily in architecture — dependency
-injection, clean architecture, MVVM, MVI, modularization — and these patterns can be valuable.
-But they are frequently treated as goals in themselves, layers of structure added for their own
-sake, until the code is so thoroughly organized that its actual purpose becomes difficult to
-see. The architecture meant to clarify the system ends up obfuscating it.
+> **A business application is a collection of business operations. Each operation naturally follows Intent → Process → Result.**
 
-Axon takes the opposite position: the architecture *is* the principle. Intent → Process →
-Result is not a pattern layered on top of the application — it is the application. DI,
-lazy initialization, compile-time validation — these are all in service of making that
-principle easy to follow consistently, at scale, without ceremony.
+Every operation forms a compile-time contract consisting of:
+
+```
+Intent
+   │
+   ▼
+Resolver
+   │
+   ▼
+Result
+```
+
+The KSP processor validates that these pieces always agree. Dependency injection simply exists to construct the object graph required to execute those contracts.
+
+Features such as constructor injection, lazy initialization, interface bindings, and compile-time validation exist because they make business operations easier to implement—not because dependency injection is Axon's primary concern.
+
+---
+
+## Why does Axon validate Intent, Resolver, and Result together?
+
+Business operations should be impossible to wire incorrectly.
+
+An `Intent` declares the type of `Result` it produces.
+
+A `Resolver` declares both the `Intent` it handles and the `Result` it returns.
+
+The `@Resolve` annotation declares which intent the resolver implements.
+
+These three declarations describe the same business contract from different perspectives. Axon validates that they remain consistent during compilation.
+
+For example, this is valid:
+
+```kotlin
+data class LoginIntent(...) : Intent<LoginResult>()
+
+@Resolve(LoginIntent::class)
+class LoginResolver : Resolver<LoginIntent, LoginResult>
+```
+
+Changing any part of that contract without updating the others causes a compile-time error.
+
+Rather than relying on runtime testing or convention, Axon ensures the structure of every business operation is correct before the application runs.
+
+---
+
+## Why are nested result classes recommended?
+
+They are not required.
+
+Axon only requires that an intent declares the type of result it produces.
+
+However, placing the result beside its intent makes the business contract immediately discoverable. Opening an intent shows both:
+
+- what the operation requests, and
+- every outcome it may produce.
+
+For simple operations, a standalone result class may be perfectly appropriate.
+
+For operations with multiple outcomes, a nested sealed class often communicates the contract more clearly.
+
+The goal is not a particular class structure—the goal is making the business operation obvious to someone reading the code.
+
+---
+
+## Why must resolvers be stateless?
+
+A resolver represents the processing step of a business operation.
+
+Its responsibility is simply to transform an `Intent` into a `Result`.
+
+Any information required to perform the work belongs in the `Intent`.
+
+Any information the caller needs afterward belongs in the `Result`.
+
+Keeping resolvers stateless makes them deterministic, reusable, naturally thread-safe, and easy to test.
+
+If a resolver requires mutable internal state, that state usually belongs elsewhere in the application rather than inside the processing layer.
+
+---
+
+## Why don't resolvers throw exceptions?
+
+Business failures are business outcomes.
+
+Invalid credentials, insufficient permissions, unavailable inventory, or validation failures are expected possibilities and should be represented explicitly by the result type.
+
+Exceptions represent programming or infrastructure failures that violate the resolver contract.
+
+For that reason, Axon distinguishes between:
+
+- **Business outcomes** → returned as `Result`
+- **Programming errors** → surfaced as `ResolverException`
+
+This keeps business logic explicit while ensuring genuine bugs are never silently treated as normal outcomes.
 
 ---
 
 ## Why doesn't Axon support factory-scoped resolvers?
 
-Factory pattern exists to manage **stateful objects** — create on demand, destroy when done,
-restore from persistence when needed again. The lifecycle complexity this introduces (create →
-use → destroy → restore) is the cost paid to keep stateful objects out of memory when idle.
+Factory lifecycles exist to manage stateful objects.
 
-Resolvers in Axon are **stateless by design**. A stateless object is just code — its memory
-footprint beyond JVM bytecode is negligible. There is nothing meaningful to release, and
-therefore nothing to justify the factory lifecycle. Applying factory semantics to a stateless
-object adds complexity without reducing any real memory consumption.
+Resolvers are intentionally stateless.
 
-If you feel the need for factory-scoped resolvers, the more likely diagnosis is that the
-resolver has accumulated internal mutable state — which is itself the design error to fix.
+Since a resolver contains only processing logic, creating and destroying resolver instances provides little practical benefit while introducing additional lifecycle complexity.
+
+Instead, resolver instances are created lazily the first time they are needed and reused afterward.
+
+If a resolver appears to require factory semantics, it is often a sign that mutable state has found its way into the processing layer.
 
 ---
 
 ## Why doesn't Axon have session scope?
 
-Session is not a special lifecycle — it is **context**. Any data that needs to persist across
-multiple dispatches within a logical session (user ID, auth token, active filters) can be
-carried by the Intent as input, or returned by the Result and stored by the caller for the
-next dispatch.
+Because a session is context—not object lifetime.
 
-This is not a workaround — it is the correct model. Neural networks operate the same way:
-a neuron has no memory between activations. Its "state" is not stored in the node; it is
-carried by the signal that passes through it. Axon resolvers follow the same principle.
+Information such as user identity, authentication, filters, locale, or workflow state belongs either:
 
-Forcing session semantics into the processing layer conflates two separate concerns:
-**routing** (Axon's job) and **state management** (the caller's job). Keeping them separate
-makes both easier to reason about, test, and change independently.
+- in the `Intent`, or
+- in data retained by the caller between dispatches.
+
+Axon intentionally separates business processing from application state management.
+
+Resolvers process requests.
+
+Callers own state.
+
+Keeping those responsibilities separate produces simpler and more predictable systems.
 
 ---
 
-## Isn't it inefficient to keep all resolvers alive indefinitely?
+## Isn't keeping every resolver alive wasteful?
 
-Only if they hold significant resources. A correctly designed stateless resolver holds no
-resources beyond its injected service references, which are themselves stateless. The
-singleton wiring generated by KSP is a set of object references — not connections, not
-caches, not threads.
+Resolvers are lightweight objects.
 
-If a dependency genuinely holds expensive resources (a connection pool, a large in-memory
-cache), releasing those resources should be an **explicit business operation** — an Intent
-dispatched when the resource is no longer needed. This makes resource management intentional
-and traceable, rather than tied to an implicit lifecycle event.
+They contain processing logic and references to their dependencies.
+
+They do not maintain per-request state, worker threads, caches, or network connections simply by existing.
+
+Creating and destroying such objects repeatedly generally costs more than keeping them available.
+
+Expensive resources should instead be managed explicitly by the components that own those resources—not by the resolver lifecycle.
 
 ---
 
 ## What about memory pressure on mobile devices?
 
-Modern operating systems already handle memory pressure at the process level — more
-efficiently and more correctly than any application-level lifecycle management can. When the
-OS needs memory, it will page out cold memory regions or terminate background processes. The
-application does not need to replicate this mechanism manually.
+Modern operating systems already manage memory more effectively than application-level object lifecycles.
 
-The create → destroy → restore cycle that is common in mobile development (Android `onStop`
-/ `onStart`, iOS `viewDidDisappear` / `viewDidAppear`) is largely a legacy of early mobile
-hardware constraints — devices with 64–256 MB of RAM where every byte mattered. On modern
-hardware, this overhead often exists not because it is needed, but because the platform
-architecture was designed when it was.
+When memory becomes scarce, the operating system can reclaim unused pages or terminate background processes.
 
-Axon does not attempt to compete with or replicate the OS memory manager. Resolvers and their
-dependencies are singletons. The OS handles the rest.
+Axon therefore avoids introducing additional object lifecycle management solely for memory optimization.
+
+Resolvers are created lazily and reused.
+
+Memory management remains the operating system's responsibility.
 
 ---
 
-## What if two screens are active simultaneously and both dispatch the same Intent type?
+## What happens if multiple screens dispatch the same Intent simultaneously?
 
-This is not a problem. `dispatch` is a `suspend fun` that returns the result directly to the
-calling coroutine. Each screen dispatches independently and receives its own result. There is
-no broadcast, no shared result queue, no ambiguity about which screen gets which response.
+Each dispatch is completely independent.
 
-Concurrent dispatches of the same Intent type execute independently through the same stateless
-resolver — the same way two simultaneous HTTP requests to the same endpoint are handled
-independently by the same stateless handler on a server.
+`dispatch` is a suspending function that returns its result directly to the calling coroutine.
 
-Cancellation is also handled naturally: cancelling the caller's coroutine scope (e.g.
-`viewModelScope`) cancels any in-flight `dispatch` call. No additional lifecycle wiring
-is required.
+Multiple callers can dispatch the same intent concurrently through the same stateless resolver without interfering with one another.
+
+This is similar to multiple HTTP requests being handled simultaneously by the same server endpoint.
+
+Cancellation is equally straightforward.
+
+Cancelling the caller's coroutine automatically cancels the corresponding dispatch operation.
