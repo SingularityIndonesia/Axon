@@ -51,6 +51,25 @@ Key properties:
 
 ---
 
+## Interface binding (`@Bind`)
+
+To depend on an interface rather than a concrete class, annotate the implementation with `@Bind`:
+
+```kotlin
+interface DatabaseRepository
+
+@Bind(DatabaseRepository::class)
+class LocalDatabase @Inject constructor() : DatabaseRepository
+
+class AuthenticationService @Inject constructor(
+    private val db: DatabaseRepository  // LocalDatabase is injected here
+)
+```
+
+The processor substitutes the concrete implementation wherever the interface appears in a constructor, then wires it as a lazy singleton as usual.
+
+---
+
 ## Compile-time guarantees
 
 | Violation | Error |

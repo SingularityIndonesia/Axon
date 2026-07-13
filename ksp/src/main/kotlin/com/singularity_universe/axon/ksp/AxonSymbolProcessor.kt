@@ -36,7 +36,19 @@ class AxonSymbolProcessor(
 
         if (resolverClasses.isEmpty()) return emptyList()
 
-        val graph = buildDependencyGraph(resolverClasses)
+        // Build bind map: interface qualified name → concrete implementation
+        val bindMap: Map<String, KSClassDeclaration> = resolver
+            .getSymbolsWithAnnotation("com.singularity_universe.axon.Bind")
+            .filterIsInstance<KSClassDeclaration>()
+            .mapNotNull { impl ->
+                val annotation = impl.annotations.first { it.shortName.asString() == "Bind" }
+                val interfaceType = annotation.arguments.first().value as? KSType ?: return@mapNotNull null
+                val interfaceKey = interfaceType.declaration.qualifiedName?.asString() ?: return@mapNotNull null
+                interfaceKey to impl
+            }
+            .toMap()
+
+        val graph = buildDependencyGraph(resolverClasses, bindMap)
         val sharedKeys = findSharedNodes(graph)
         val sorted = topologicalSort(graph)
 
@@ -108,15 +120,17 @@ class AxonSymbolProcessor(
 
     /**
      * Builds the full dependency graph by recursively collecting all @Inject
-     * dependencies reachable from the given [resolvers].
+     * dependencies reachable from the given [resolvers]. Interface parameters
+     * are resolved to their concrete implementations via [bindMap].
      */
     private fun buildDependencyGraph(
-        resolvers: List<KSClassDeclaration>
+        resolvers: List<KSClassDeclaration>,
+        bindMap: Map<String, KSClassDeclaration>
     ): Map<String, DependencyNode> {
         val graph = mutableMapOf<String, DependencyNode>()
         val inStack = mutableSetOf<String>()   // currently being traversed
         val path = mutableListOf<String>()      // current traversal path for error reporting
-        resolvers.forEach { collectNode(it, graph, inStack, path) }
+        resolvers.forEach { collectNode(it, graph, inStack, path, bindMap) }
         return graph
     }
 
@@ -162,12 +176,15 @@ class AxonSymbolProcessor(
      * [inStack] tracks nodes currently being traversed in the active DFS path.
      * [path] records simple names along that path for readable cycle error messages.
      * If a node is encountered while already in [inStack], a circular dependency is reported.
+     *
+     * Interface parameters are resolved to their concrete implementations via [bindMap].
      */
     private fun collectNode(
         clazz: KSClassDeclaration,
         graph: MutableMap<String, DependencyNode>,
         inStack: MutableSet<String>,
-        path: MutableList<String>
+        path: MutableList<String>,
+        bindMap: Map<String, KSClassDeclaration>
     ) {
         val key = clazz.qualifiedName?.asString() ?: return
         val simpleName = clazz.simpleName.asString()
@@ -196,11 +213,14 @@ class AxonSymbolProcessor(
         }
 
         val params = constructor.parameters.map { param ->
-            param.type.resolve().declaration as KSClassDeclaration
+            val declared = param.type.resolve().declaration as KSClassDeclaration
+            val declaredKey = declared.qualifiedName?.asString() ?: return@map declared
+            // Resolve interface to its @Bind implementation, if one exists
+            bindMap[declaredKey] ?: declared
         }
 
         graph[key] = DependencyNode(clazz, constructor, params)
-        params.forEach { dep -> collectNode(dep, graph, inStack, path) }
+        params.forEach { dep -> collectNode(dep, graph, inStack, path, bindMap) }
 
         inStack.remove(key)
         path.removeLast()

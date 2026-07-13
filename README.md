@@ -76,6 +76,19 @@ class AuthenticationService @Inject constructor(
 )
 ```
 
+To depend on an interface rather than a concrete class, use `@Bind` on the implementation:
+
+```kotlin
+interface DatabaseRepository
+
+@Bind(DatabaseRepository::class)
+class LocalDatabase @Inject constructor() : DatabaseRepository
+
+class AuthenticationService @Inject constructor(
+    private val db: DatabaseRepository  // LocalDatabase is injected
+)
+```
+
 Rules:
 - Classes with a no-arg constructor are injectable without `@Inject`
 - Shared dependencies are instantiated once and reused across all resolvers

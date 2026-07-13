@@ -251,6 +251,76 @@ class AxonSymbolProcessorTest {
     }
 
     @Test
+    fun `@Bind resolves interface to concrete implementation`() {
+        val result = compile(
+            simpleIntent,
+            SourceFile.kotlin("Repository.kt", """
+                import com.singularity_universe.axon.Bind
+                import com.singularity_universe.axon.Inject
+                interface Repository
+                @Bind(Repository::class)
+                class LocalRepository @Inject constructor() : Repository
+            """.trimIndent()),
+            SourceFile.kotlin("SimpleResolver.kt", """
+                import com.singularity_universe.axon.Inject
+                import com.singularity_universe.axon.Resolve
+                import com.singularity_universe.axon.Resolver
+                @Resolve(SimpleIntent::class)
+                class SimpleResolver @Inject constructor(
+                    private val repo: Repository
+                ) : Resolver<SimpleIntent, String> {
+                    override suspend fun resolve(intent: SimpleIntent): String = "ok"
+                }
+            """.trimIndent())
+        )
+        assertEquals(KotlinCompilation.ExitCode.OK, result.exitCode)
+        val generated = result.generatedAxonRegistration()
+        assertNotNull(generated)
+        assertTrue(generated.contains("val localRepository = lazy { LocalRepository() }"))
+        assertTrue(generated.contains("val simpleResolver = lazy { SimpleResolver(localRepository.value) }"))
+    }
+
+    @Test
+    fun `@Bind implementation shared across multiple dependents`() {
+        val result = compile(
+            SourceFile.kotlin("Intents.kt", """
+                import com.singularity_universe.axon.Intent
+                class IntentA : Intent<String>()
+                class IntentB : Intent<String>()
+            """.trimIndent()),
+            SourceFile.kotlin("Repository.kt", """
+                import com.singularity_universe.axon.Bind
+                import com.singularity_universe.axon.Inject
+                interface Repository
+                @Bind(Repository::class)
+                class LocalRepository @Inject constructor() : Repository
+            """.trimIndent()),
+            SourceFile.kotlin("ResolverA.kt", """
+                import com.singularity_universe.axon.Inject
+                import com.singularity_universe.axon.Resolve
+                import com.singularity_universe.axon.Resolver
+                @Resolve(IntentA::class)
+                class ResolverA @Inject constructor(val repo: Repository) : Resolver<IntentA, String> {
+                    override suspend fun resolve(intent: IntentA): String = "a"
+                }
+            """.trimIndent()),
+            SourceFile.kotlin("ResolverB.kt", """
+                import com.singularity_universe.axon.Inject
+                import com.singularity_universe.axon.Resolve
+                import com.singularity_universe.axon.Resolver
+                @Resolve(IntentB::class)
+                class ResolverB @Inject constructor(val repo: Repository) : Resolver<IntentB, String> {
+                    override suspend fun resolve(intent: IntentB): String = "b"
+                }
+            """.trimIndent())
+        )
+        assertEquals(KotlinCompilation.ExitCode.OK, result.exitCode)
+        val generated = result.generatedAxonRegistration()!!
+        val occurrences = "val localRepository = lazy".toRegex().findAll(generated).count()
+        assertEquals(1, occurrences, "LocalRepository should be declared exactly once even when bound interface is used by multiple resolvers")
+    }
+
+    @Test
     fun `circular dependency emits compile error`() {
         val result = compile(
             simpleIntent,
