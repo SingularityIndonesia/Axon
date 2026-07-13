@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.0.0-alpha5] - 2026-07-13
+
+### Added
+- `parent` parameter on `Intent` is now required (no default value) — callers must explicitly pass `parent = null` or a real parent intent. This is enforced at compile time via KSP: a build error is emitted if an Intent type has a default value for `parent`.
+- KSP compile-time tests for the parent default value enforcement.
+
+### Docs
+- README: added "The Parent Chain" section explaining the vision of traceable, causally connected operations.
+- FAQ: added entry explaining why `Intent` has a `parent` and the intent-scoped architecture vision.
+
+---
+
 ## [1.0.0-alpha4] - 2026-07-13
 
 ### Changed
