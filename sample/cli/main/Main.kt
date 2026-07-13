@@ -2,9 +2,9 @@ import com.singularity_universe.axon.Axon
 import com.singularity_universe.axon.exception.ResolverException
 import com.singularity_universe.axon.generated.init
 import com.singularity_universe.axon.utils.Log
-import intent.MyAppIntent.DeleteAccountIntent
-import intent.MyAppIntent.LoginIntent
-import intent.MyAppIntent.LogoutIntent
+import intent.DeleteAccountIntent
+import intent.LoginIntent
+import intent.LogoutIntent
 import kotlinx.coroutines.runBlocking
 
 fun main() {

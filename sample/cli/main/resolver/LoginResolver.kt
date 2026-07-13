@@ -4,9 +4,9 @@ import com.singularity_universe.axon.Inject
 import com.singularity_universe.axon.Resolve
 import com.singularity_universe.axon.Resolver
 import datasource.AuthenticationService
-import intent.MyAppIntent.LoginIntent
-import intent.MyAppIntent.LoginIntent.LoginResult
-import intent.MyAppIntent.LoginIntent.LoginResult.LoginSuccess
+import intent.LoginIntent
+import intent.LoginIntent.LoginResult
+import intent.LoginIntent.LoginResult.LoginSuccess
 
 @Resolve(LoginIntent::class)
 class LoginResolver @Inject constructor(

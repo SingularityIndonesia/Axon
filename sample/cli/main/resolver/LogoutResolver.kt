@@ -4,8 +4,8 @@ import com.singularity_universe.axon.Inject
 import com.singularity_universe.axon.Resolve
 import com.singularity_universe.axon.Resolver
 import datasource.LocalDatabase
-import intent.MyAppIntent.LogoutIntent
-import intent.MyAppIntent.LogoutIntent.LogoutResult
+import intent.LogoutIntent
+import intent.LogoutIntent.LogoutResult
 
 @Resolve(LogoutIntent::class)
 class LogoutResolver @Inject constructor(

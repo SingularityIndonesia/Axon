@@ -25,11 +25,9 @@ class IntentTest {
     }
 
     @Test
-    fun `parent can be overridden`() {
+    fun `parent can be set at construction time`() {
         val parent = SomeIntent("parent")
-        val child = object : Intent<String>() {
-            override val parent = parent
-        }
+        val child = object : Intent<String>(parent) {}
         assertEquals(parent, child.parent)
     }
 
